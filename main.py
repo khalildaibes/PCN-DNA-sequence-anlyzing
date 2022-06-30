@@ -88,24 +88,24 @@ class AminoAcidNetNodes:
 # @INPUT : DB: DATABASE , ID: SUBJECT ID , cdr_length: CDR LENGTH
 # @OUTPUT : CMD QUERY
 #####################################################################################################################
-def select_query(DB, ID, cdr_length):
+def select_query(db, id, cdr_length):
     cmd = ""
     # SPECIFIC SUBJECTS AND SPECIFIC CDR LENGTHS
-    if ID != "all" and cdr_length != "not specific":
-        cmd = "select seq.*, coll.* from {}.sequences as seq inner join {}.sequence_collapse as coll on seq.ai=coll.seq_ai WHERE seq.subject_id={} AND seq.functional=1 AND coll.instances_in_subject !=0 AND coll.copy_number_in_subject > 1  AND seq.deletions is null AND  seq.insertions is null AND LENGTH(seq.cdr3_aa)=14 ".format(
-            DB, DB, ID)
+    if id != "all" and cdr_length != "not specific":
+        cmd = "select seq.*, coll.* from {}.sequences as seq inner join {}.sequence_collapse as coll on seq.ai=coll.seq_ai WHERE seq.subject_id={} AND seq.functional=1 AND coll.instances_in_subject !=0 AND coll.copy_number_in_subject > 1  AND seq.deletions is null AND  seq.insertions is null AND LENGTH(seq.cdr3_aa)={} ".format(
+            db, db, id, cdr_length)
     # ALL SUBJECTS AND SPECIFIC CDR LENGTHS
-    elif ID == "all" and cdr_length != "not specific":
-        cmd = "select seq.*, coll.* from {}.sequences as seq inner join {}.sequence_collapse as coll on seq.ai=coll.seq_ai WHERE seq.functional=1 AND coll.instances_in_subject !=0 AND coll.copy_number_in_subject > 1  AND seq.deletions is null AND  seq.insertions is null AND LENGTH(seq.cdr3_aa)=14 ORDER BY RAND()".format(
-            DB, DB)
+    elif id == "all" and cdr_length != "not specific":
+        cmd = "select seq.*, coll.* from {}.sequences as seq inner join {}.sequence_collapse as coll on seq.ai=coll.seq_ai WHERE seq.functional=1 AND coll.instances_in_subject !=0 AND coll.copy_number_in_subject > 1  AND seq.deletions is null AND  seq.insertions is null AND LENGTH(seq.cdr3_aa)={} ORDER BY RAND()".format(
+            db, db, cdr_length)
     # SPECIFIC SUBJECTS AND ALL CDR LENGTHS
-    elif ID != "all" and cdr_length == "not specific":
+    elif id != "all" and cdr_length == "not specific":
         cmd = "select seq.*, coll.* from {}.sequences as seq inner join {}.sequence_collapse as coll on seq.ai=coll.seq_ai WHERE seq.subject_id={} AND seq.functional=1 AND coll.instances_in_subject !=0 AND coll.copy_number_in_subject > 1  AND seq.deletions is null AND seq.insertions is null AND LENGTH(seq.cdr3_aa)>8 ".format(
-            DB, DB, ID)
+            db, db, id)
     # ALL SUBJECTS AND ALL CDR LENGTHS
-    elif ID == "all" and cdr_length == "not specific":
+    elif id == "all" and cdr_length == "not specific":
         cmd = "select seq.*, coll.* from {}.sequences as seq inner join {}.sequence_collapse as coll on seq.ai=coll.seq_ai WHERE seq.functional=1 AND coll.instances_in_subject !=0 AND coll.copy_number_in_subject > 1  AND seq.deletions is null AND  seq.insertions is null AND LENGTH(seq.cdr3_aa)>8 ORDER BY RAND()".format(
-            DB, DB, ID)
+            db, db, id)
 
     return cmd
 
@@ -178,9 +178,6 @@ def replace_nucleotide(DB, ID, cdr_length, selected_analyzed_position, startposi
           # iterate over each line as a ordered dictionary
         for line in tqdm(csv_dict_reader):
             # Check file as empty
-
-            # ['seq_id', 'sequence', 'TranslatedSeq', 'TranslatedGermline', 'ai', 'subject_id', 'clone_id', 'sample_id',
-            #  'cdr3_aa'])
 
                 dna = ""
                 germ = ""
@@ -435,9 +432,9 @@ def startf(DB, ID, cdr_length, selected_analyzed_position, startposition, endpos
 
                 temp_pos = temp_pos + 9
 
-        csv_writer.writerow(
-        [seqID, dna, protein_sequence, ai, subjectID, cloneID, sampleID, cdr3_seq])
-        print("Translating DONE!")
+            csv_writer.writerow(
+            [seqID, dna, protein_sequence, ai, subjectID, cloneID, sampleID, cdr3_seq])
+            print("Translating DONE!")
 
 def calculateHammingDistance(protein1, protein2):
     count = 0
@@ -467,8 +464,9 @@ def calculateAminoAcidsSimilarty(protein1, protein2):
 
 def show_Nuclotides_netwrok_stats(networkx_graph):
     max = 0
-    thekey = None
+    the_key = None
     result = ""
+    sequences=""
     for key in aa_count:
         result += (' ' + key + '  ')
         lst = aa_count.get(key)
@@ -476,8 +474,8 @@ def show_Nuclotides_netwrok_stats(networkx_graph):
         if lst[0] > max:
             max = lst[0]
             sequences = aa_count.get(key)
-            thekey = key
-    result += (str(thekey) + '   The max encountered sub sequence is ' + str(max) + '  ' + ' '.join(
+            the_key = key
+    result += (str(the_key) + '   The max encountered sub sequence is ' + str(max) + '  ' + ' '.join(
         str(x.sub_seq) + ' ' + str(x.position) for x in sequences[1:]))
     most_connected_node_counter = [0, None]
     for node, node_attrs in tqdm(networkx_graph.nodes(data=True)):
@@ -486,12 +484,14 @@ def show_Nuclotides_netwrok_stats(networkx_graph):
             most_connected_node_counter[0] = networkx_graph.degree(node)
     result += str(most_connected_node_counter[1]) + ' with this count of connectivity' + str(
         most_connected_node_counter[0])
+
     return result
 
 
 def draw_graph3(networkx_graph, notebook=True, output_filename='empgraph.html', show_buttons=False,
                 only_physics_buttons=False):
     from pyvis import network as net
+    actual_total_appearances=0
     real_nodes_count=0
     real_edges_count = 0
     nuclotide_count_dict = {}
@@ -521,7 +521,7 @@ def draw_graph3(networkx_graph, notebook=True, output_filename='empgraph.html', 
                 x.append(node)
 
                 for node1 in x[1:]:
-                    title += " the subject id is : " + str(
+                    title +=str(x[0])+ " the subject id is : " + str(
                         node1.subject) + " The sequence id is :" + str(node1.seq_id)+"\n"
                 if node.sub_seq not in pyvis_graph.nodes:
                     pyvis_graph.add_node(node.sub_seq, title=title,
@@ -533,13 +533,13 @@ def draw_graph3(networkx_graph, notebook=True, output_filename='empgraph.html', 
                 x.append(node)
                 if x[0] >= 2:
                     for node1 in x[1:]:
-                        title += " the subject id is : " + str(
+                        title += str(x[0]) + " the subject id is : " + str(
                             node1.subject) + " The sequence id is :" + str(node1.seq_id) + "\n"
                     if node.sub_seq not in pyvis_graph.nodes:
                         pyvis_graph.add_node(node.sub_seq, title=title,
                                              label=str(str(node.sub_seq)), color=color1, )
                         real_nodes_count += 1
-
+                        actual_total_appearances += x[0]
         else:
             x = [0]
             x[0] = 1
@@ -581,6 +581,7 @@ def draw_graph3(networkx_graph, notebook=True, output_filename='empgraph.html', 
         <h2>
         '''
     extra_html+="real nodes count ="+str(real_nodes_count)+"\n"
+    extra_html += "actual total appearances =" + str(actual_total_appearances) + "\n"
     extra_html += "real edges count =" + str(real_edges_count) + "\n"
     extra_html+="</h2> <div class='title'>"
     extra_html += nx.info(networkx_graph)
@@ -821,9 +822,6 @@ def create_replaced_nuclotides_netwrok():
         show_Nuclotides_netwrok_stats(replaced_nucoltides_kmers_nets_G)
         os.chdir('..')
 
-
-def replace_amino_occures(poition):
-    nodes_list = nucoltides_kmers_nets.get(poition)
 
 
 def make_netwrok_labels(networkx_graph, key):
