@@ -43,8 +43,8 @@ def set_row_count(rows):
 #####################################################################################################################
 def start_fetching_data():
     # main.select_query(user.database, user.subject,user.cdr_length)
-    main.startf(user.database, user.subject, user.cdr_length, user.selected_analyzed_position, user.startposition,
-                user.endposition, user.rows)
+    main.startf(user.database, user.subject, user.selected_analyzed_position, user.startposition,
+                user.endposition, user.rows, user.cdr_length)
     fetched_flag = True
 
 #####################################################################################################################
@@ -163,7 +163,7 @@ def set_position(start, end):
 # @OUTPUT : ---
 #####################################################################################################################
 def set_cdr_length(cdr_length):
-    user.cdr_length = cdr_length
+    user.cdr_length = int(cdr_length)
     print(user.cdr_length)
 #####################################################################################################################
 #####################################################################################################################
@@ -249,7 +249,7 @@ def choose_cdr_length(choosing_DB_screen, db):
     # SETTING A TRACE CALLBACK TO THE FUNCTION CLICK EVENT
     variable.trace("w", lambda *args: set_cdr_length(variable.get()))
     # SEETING THE DEFULT VALUE TO THE OPTION MENUE
-    variable.set("288")  # default value
+    variable.set("14")  # default value
     # CALLING THE SET OIN TEH DEFULT VALUE
     set_cdr_length(variable.get())
     # DECLARING A LABEL
@@ -258,8 +258,8 @@ def choose_cdr_length(choosing_DB_screen, db):
     w = OptionMenu(cdr_length_screen, variable, "14", "20", "24", "30", "not specific")
     w.pack()
     # DECLARE THE BUTTON TO PRESS
-    Button(cdr_length_screen, text="Next", height="2", width="30",
-           command=lambda: choose_subject(choosing_DB_screen, db, variable.get())).pack()
+    # Button(cdr_length_screen, text="Next", height="2", width="30",
+    #        command=lambda: select_row_count(choosing_DB_screen)).pack()
 
 #####################################################################################################################
 # @DESCRIPTION : ASSIGN TO THE USER METADATA THE REQUESTED SUBJECT WINDOW
@@ -330,7 +330,7 @@ def change_analyzing_points(chosen_analyzed_sector, select_position_screen, w):
         # DECLARING THE VARIABLE
         variable = StringVar(select_position_screen)
         variable.set("'Select Region'")  # default value
-        variable.trace("w", lambda *args: set_cdr_length(variable.get()))
+        variable.trace("w", lambda *args: choose_cdr_length(select_position_screen, user.database))
         Label(select_position_screen, text="Select Region", bg="blue", width="300", height="2",
               font=("Calibri", 13)).pack()
         Label(select_position_screen, text="Please choose only CDR3", bg="blue", width="300", height="2",
@@ -456,8 +456,8 @@ def build_nucleotides_network():
 # @OUTPUT : ---
 #####################################################################################################################
 def build_replaced_nucleotides_network():
-    main.replace_nucleotide(user.database, user.subject, user.cdr_length, user.selected_analyzed_position,
-                            user.startposition, user.endposition, user.rows)
+    main.replace_nucleotide(user.database, user.subject,  user.selected_analyzed_position,
+                            user.startposition, user.endposition, user.rows, user.cdr_length)
     main.create_replaced_nuclotides_netwrok()
 
 #####################################################################################################################

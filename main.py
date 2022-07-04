@@ -5,6 +5,7 @@
 import csv
 # A LIBRARY TO WORK WITH HTML FILES (READ\WRITE)
 import numbers
+from datetime import datetime
 
 from bs4 import BeautifulSoup
 # A LIBRARY TO WORK VIEW PROGRESS IN CONSOLE WINDOW
@@ -26,44 +27,46 @@ import os
 # @INPUT : DB : DATABASE NAME , ID: SUBJECT ID
 # @OUTPUT : ---
 #####################################################################################################################
-def create_files(DB, ID):
+def create_files(DB, ID, cdr_length, selected_analyzed_position, startposition, endposition, rows):
+    # CREATING THE DIRECTORY
+    global directory
+    directory = "{}-DB-{}_ID-{}_CDR-{}_P-{}_S{}_E{}_R{}_Results".format(datetime.today().strftime('%Y-%m-%d-%H-%M-%S'),
+                                                                        DB, ID, cdr_length, selected_analyzed_position,
+                                                                        startposition, endposition, rows)
+    try:
+        # CREATE A DIRECTORY
+        os.makedirs(directory)
+        print("Directory '%s' created successfully" % directory)
+        # CATCH EXCEPTION
+    except OSError as error:
+        print("Directory '%s' can not be created" % directory)
 
-        # CREATING THE DIRECTORY
-        directory = "{}emp_id{}_Results".format(DB, ID)
-        try:
-            # CREATE A DIRECTORY
-            os.makedirs(directory)
-            print("Directory '%s' created successfully" % directory)
-            # CATCH EXCEPTION
-        except OSError as error:
-            print("Directory '%s' can not be created" % directory)
-
-        try:   # DECLARE MUST HAVE FOLDERS AND FILES
-            global toFile
-            toFile = "{}\{}emp_id{}.csv".format(directory, DB, ID)
-            global toFile1
-            toFile1 = "{}\{}emp_AA_id{}.csv".format(directory, DB, ID)
-            global toFile2
-            toFile2 = "{}\{}emp_id{}_seqK.csv".format(directory, DB, ID)
-            global u_path
-            u_path = "{}\{}_id{}_uniqeKmers.csv".format(directory, DB, ID)
-            global Amino_acid
-            Amino_acid = "{}\Amino_acid".format(os.getcwd())
-            isdir = os.path.isdir(Amino_acid)
-            if not isdir:
-                os.makedirs(Amino_acid)
-            global nucleotides
-            nucleotides = "{}\\nucleotides".format(os.getcwd())
-            isdir = os.path.isdir(nucleotides)
-            if not isdir:
-                os.makedirs(nucleotides)
-            global pajek
-            pajek = "{}\pajek".format(os.getcwd())
-            isdir = os.path.isdir(pajek)
-            if not isdir:
-                os.makedirs(pajek)
-        except OSError as error:
-            print("Directory '%s' can not be created" % directory)
+    try:  # DECLARE MUST HAVE FOLDERS AND FILES
+        global toFile
+        toFile = "{}\{}emp_id{}.csv".format(str(os.getcwd() + "\\" + directory), DB, ID)
+        global toFile1
+        toFile1 = "{}\{}emp_AA_id{}.csv".format(str(os.getcwd() + "\\" + directory), DB, ID)
+        global toFile2
+        toFile2 = "{}\{}emp_id{}_seqK.csv".format(str(os.getcwd() + "\\" + directory), DB, ID)
+        global u_path
+        u_path = "{}\{}_id{}_uniqeKmers.csv".format(str(os.getcwd() + "\\" + directory), DB, ID)
+        global Amino_acid
+        Amino_acid = "{}\Amino_acid".format(str(os.getcwd() + "\\" + directory))
+        isdir = os.path.isdir(Amino_acid)
+        if not isdir:
+            os.makedirs(Amino_acid)
+        global nucleotides
+        nucleotides = "{}\\nucleotides".format(str(os.getcwd() + "\\" + directory))
+        isdir = os.path.isdir(nucleotides)
+        if not isdir:
+            os.makedirs(nucleotides)
+        global pajek
+        pajek = "{}\pajek".format(str(os.getcwd() + "\\" + directory))
+        isdir = os.path.isdir(pajek)
+        if not isdir:
+            os.makedirs(pajek)
+    except OSError as error:
+        print("Directory '%s' can not be created" % directory)
 
 
 # A CLASS TO HOLD THE NUCLEOTIDES NODES DATA AND METADATA
@@ -88,26 +91,28 @@ class AminoAcidNetNodes:
 # @INPUT : DB: DATABASE , ID: SUBJECT ID , cdr_length: CDR LENGTH
 # @OUTPUT : CMD QUERY
 #####################################################################################################################
-def select_query(DB, ID, cdr_length):
+def select_query(db, id, cdr_length=14):
     cmd = ""
+    cdr_length = 14
     # SPECIFIC SUBJECTS AND SPECIFIC CDR LENGTHS
-    if ID != "all" and cdr_length != "not specific":
-        cmd = "select seq.*, coll.* from {}.sequences as seq inner join {}.sequence_collapse as coll on seq.ai=coll.seq_ai WHERE seq.subject_id={} AND seq.functional=1 AND coll.instances_in_subject !=0 AND coll.copy_number_in_subject > 1  AND seq.deletions is null AND  seq.insertions is null AND LENGTH(seq.cdr3_aa)=14 ".format(
-            DB, DB, ID)
+    if id != "all" and cdr_length != "not specific":
+        cmd = "select seq.*, coll.* from {}.sequences as seq inner join {}.sequence_collapse as coll on seq.ai=coll.seq_ai WHERE seq.subject_id={} AND seq.functional=1 AND coll.instances_in_subject !=0 AND coll.copy_number_in_subject > 1  AND seq.deletions is null AND  seq.insertions is null AND LENGTH(seq.cdr3_aa)={} ".format(
+            db, db, id, cdr_length)
     # ALL SUBJECTS AND SPECIFIC CDR LENGTHS
-    elif ID == "all" and cdr_length != "not specific":
-        cmd = "select seq.*, coll.* from {}.sequences as seq inner join {}.sequence_collapse as coll on seq.ai=coll.seq_ai WHERE seq.functional=1 AND coll.instances_in_subject !=0 AND coll.copy_number_in_subject > 1  AND seq.deletions is null AND  seq.insertions is null AND LENGTH(seq.cdr3_aa)=14 ORDER BY RAND()".format(
-            DB, DB)
+    elif id == "all" and cdr_length != "not specific":
+        cmd = "select seq.*, coll.* from {}.sequences as seq inner join {}.sequence_collapse as coll on seq.ai=coll.seq_ai WHERE seq.functional=1 AND coll.instances_in_subject !=0 AND coll.copy_number_in_subject > 1  AND seq.deletions is null AND  seq.insertions is null AND LENGTH(seq.cdr3_aa)={} ORDER BY RAND()".format(
+            db, db, cdr_length)
     # SPECIFIC SUBJECTS AND ALL CDR LENGTHS
-    elif ID != "all" and cdr_length == "not specific":
+    elif id != "all" and cdr_length == "not specific":
         cmd = "select seq.*, coll.* from {}.sequences as seq inner join {}.sequence_collapse as coll on seq.ai=coll.seq_ai WHERE seq.subject_id={} AND seq.functional=1 AND coll.instances_in_subject !=0 AND coll.copy_number_in_subject > 1  AND seq.deletions is null AND seq.insertions is null AND LENGTH(seq.cdr3_aa)>8 ".format(
-            DB, DB, ID)
+            db, db, id)
     # ALL SUBJECTS AND ALL CDR LENGTHS
-    elif ID == "all" and cdr_length == "not specific":
+    elif id == "all" and cdr_length == "not specific":
         cmd = "select seq.*, coll.* from {}.sequences as seq inner join {}.sequence_collapse as coll on seq.ai=coll.seq_ai WHERE seq.functional=1 AND coll.instances_in_subject !=0 AND coll.copy_number_in_subject > 1  AND seq.deletions is null AND  seq.insertions is null AND LENGTH(seq.cdr3_aa)>8 ORDER BY RAND()".format(
-            DB, DB, ID)
+            db, db, id)
 
     return cmd
+
 
 #####################################################################################################################
 # @DESCRIPTION : GET ROWS BASED ON THE SELECTED ROWS COUNT
@@ -127,7 +132,7 @@ def fetch_based_on_row_count(amount, mycursor):
 # @INPUT : DB: DATABASE NAME, ID, cdr_length, selected_analyzed_position, startposition, endposition, rows
 # @OUTPUT : A list that holds dicts as rows
 #####################################################################################################################
-def replace_nucleotide(DB, ID, cdr_length, selected_analyzed_position, startposition, endposition, rows):
+def replace_nucleotide(DB, ID, selected_analyzed_position, startposition, endposition, rows, cdr_length=14):
     print("\nFirst step (translate sequences to amino acids):")
     print("First step strats...\n")
     # CREATING A CONNECTION WITH THE DATABASE
@@ -175,115 +180,107 @@ def replace_nucleotide(DB, ID, cdr_length, selected_analyzed_position, startposi
     print("Translating starts ....")
     with open(toFile, 'r+') as seq:
         csv_dict_reader = DictReader(seq)
-          # iterate over each line as a ordered dictionary
+        # iterate over each line as a ordered dictionary
         for line in tqdm(csv_dict_reader):
             # Check file as empty
 
-            # ['seq_id', 'sequence', 'TranslatedSeq', 'TranslatedGermline', 'ai', 'subject_id', 'clone_id', 'sample_id',
-            #  'cdr3_aa'])
+            dna = ""
+            germ = ""
+            protein_sequence = ""
+            # fix the germline to match the cdr with N's
 
-                dna = ""
-                germ = ""
-                protein_sequence = ""
-                # fix the germline to match the cdr with N's
+            # -------------- To NNNNNNNNNNNNNN #
+            dna = line["sequence"]
+            seqID = line["seq_id"]
+            sampleID = line["sample_id"]
+            subjectID = line["subject_id"]
+            # Generate protein sequence
+            j = 0
+            temp_pos = 0
+            start = 0
+            end = 0
+            triple = 0
+            nuclotides_sub_seq = ""
+            complete_cdr_length = cdr_length * 3
+            startswitcher = {
+                'Select Region': 112,
+                'All The Sequence': 0,
+                'Select Start And End Position': int(startposition),
+            }
+            endswitcher = {
+                'Select Region': 112 + complete_cdr_length,
+                'All The Sequence': len(dna) - ((len(dna) % 3) * 3),
+                'Select Start And End Position': int(int(endposition) - (int(endposition) % 3) * 3)
+            }
 
-                # -------------- To NNNNNNNNNNNNNN #
-                dna = line["sequence"]
-                seqID = line["seq_id"]
-                sampleID = line["sample_id"]
-                subjectID = line["subject_id"]
-                # Generate protein sequence
-                j = 0
-                temp_pos = 0
-                start = 0
-                end = 0
-                triple = 0
-                nuclotides_sub_seq = ""
+            startswitcher = int(startswitcher.get(selected_analyzed_position))
+            endswitcher = int(endswitcher.get(selected_analyzed_position))
+            tripleAA = ""
+            for i in range(startswitcher, endswitcher, 3):
 
-                startswitcher = {
-                    'Select Region': 313,
-                    'All The Sequence': 0,
-                    'Select Start And End Position': int(startposition),
-                }
-                endswitcher = {
-                    'Select Region': 356,
-                    'All The Sequence': len(dna) - ((len(dna) % 3) * 3),
-                    'Select Start And End Position': int(int(endposition) - (int(endposition) % 3) * 3)
-                }
+                if dna[i] == "N" and dna[i + 1] == "N" and dna[i + 2] == "N":
+                    protein_sequence += "x"
+                elif dna[i] == "N" or dna[i + 1] == "N" or dna[i + 2] == "N" and dna[i] != "-" and\
+                        dna[i + 1] != "-" and \
+                        dna[i + 2] != "-":
+                    protein_sequence += "x"
+                elif dna[i] == "-" and dna[i + 1] == "-" and dna[i + 2] == "-":
+                    protein_sequence += protein[dna[i:i + 3]]
+                elif dna[i] == "-" or dna[i + 1] == "-" or dna[i + 2] == "-":
+                    i = i + 0
+                else:
+                    protein_sequence += protein[dna[i:i + 3]]
 
-                startswitcher = int(startswitcher.get(selected_analyzed_position))
-                endswitcher = int(endswitcher.get(selected_analyzed_position))
-                tripleAA = ""
-                for i in range(startswitcher, endswitcher, 3):
+                    tripleAA += protein[dna[i:i + 3]]
+                    nuclotides_use = keys_use.get(protein[dna[i:i + 3]])
+                    nuclotides_sub_seq += nuclotides_use[0]
 
-                    if dna[i] == "N" and dna[i + 1] == "N" and dna[i + 2] == "N":
-                        protein_sequence += "x"
-                    elif dna[i] == "N" or dna[i + 1] == "N" or dna[i + 2] == "N" and dna[i] != "-" and dna[i + 1] != "-" and \
-                            dna[i + 2] != "-":
-                        protein_sequence += "x"
-                    elif dna[i] == "-" and dna[i + 1] == "-" and dna[i + 2] == "-":
-                        protein_sequence += protein[dna[i:i + 3]]
-                    elif dna[i] == "-" or dna[i + 1] == "-" or dna[i + 2] == "-":
-                        i = i + 0
-                    else:
-                        protein_sequence += protein[dna[i:i + 3]]
+                    triple += 1
+                    most_freq_lst = aa_most_frequent.get(protein[dna[i:i + 3]])
+                    index = most_freq_lst.index(dna[i:i + 3])
+                    most_freq_lst[index + 1] += 1
+                    aa_most_frequent[protein[dna[i:i + 3]]] = most_freq_lst
 
-                        tripleAA += protein[dna[i:i + 3]]
-                        nuclotides_use = keys_use.get(protein[dna[i:i + 3]])
-                        nuclotides_sub_seq += nuclotides_use[0]
+                    if triple == 3:
 
-                        triple += 1
-                        most_freq_lst = aa_most_frequent.get(protein[dna[i:i + 3]])
-                        index = most_freq_lst.index(dna[i:i + 3])
-                        most_freq_lst[index + 1] += 1
-                        aa_most_frequent[protein[dna[i:i + 3]]] = most_freq_lst
-
-                        if triple == 3:
-
-                            if protein[dna[i:i + 3]] != "-" and protein[dna[i:i + 3]] != "*":
-                                a_sequence = line["sequence"]  # protein a node
-                                a_subject = line["subject_id"]
-                                a_seq_id = line["seq_id"]
-                                # protein a node
-
-
-                                a_node = NucleotidesNetNodes(tripleAA, a_sequence, a_subject, a_seq_id, i)
-                                old_list = amino_acids_kmers_nets_G.get(i, None)
-                                if old_list:
-                                    old_list.append(a_node)
-                                else:
-                                    old_list = []
-                                    old_list.append(a_node)
-                                amino_acids_kmers_nets_G[i] = old_list
-                            tripleAA = ""
-
-                            triple = 0
-                            a_sequence =line["sequence"]  # protein a node
-                            a_subject =line["subject_id"]
-                            a_position = i
+                        if protein[dna[i:i + 3]] != "-" and protein[dna[i:i + 3]] != "*":
+                            a_sequence = line["sequence"]  # protein a node
+                            a_subject = line["subject_id"]
                             a_seq_id = line["seq_id"]
                             # protein a node
-                            a_node = NucleotidesNetNodes(nuclotides_sub_seq, a_sequence, a_subject, a_seq_id, a_position)
-                            aa_count[dna[i:i + 3]][0] += 1
-                            aa_count[dna[i:i + 3]].append(a_node)
-                            old_list = replaced_nucoltides_kmers_nets.get(i, [])
-                            old_list.append(a_node)
-                            replaced_nucoltides_kmers_nets[i] = old_list
-                            nuclotides_sub_seq = ""
-                    j = j + 3
 
-                    temp_pos = temp_pos + 9
+                            a_node = NucleotidesNetNodes(tripleAA, a_sequence, a_subject, a_seq_id, i)
+                            old_list = amino_acids_kmers_nets_G.get(i, None)
+                            if old_list:
+                                old_list.append(a_node)
+                            else:
+                                old_list = []
+                                old_list.append(a_node)
+                            amino_acids_kmers_nets_G[i] = old_list
+                        tripleAA = ""
 
+                        triple = 0
+                        a_sequence = line["sequence"]  # protein a node
+                        a_subject = line["subject_id"]
+                        a_position = i
+                        a_seq_id = line["seq_id"]
+                        # protein a node
+                        a_node = NucleotidesNetNodes(nuclotides_sub_seq, a_sequence, a_subject, a_seq_id, a_position)
+                        aa_count[dna[i:i + 3]][0] += 1
+                        aa_count[dna[i:i + 3]].append(a_node)
+                        old_list = replaced_nucoltides_kmers_nets.get(i, [])
+                        old_list.append(a_node)
+                        replaced_nucoltides_kmers_nets[i] = old_list
+                        nuclotides_sub_seq = ""
+                j = j + 3
 
-
-
-
+                temp_pos = temp_pos + 9
 
         print("Translating DONE!")
 
 
-def startf(DB, ID, cdr_length, selected_analyzed_position, startposition, endposition, rows):
-    create_files(DB, ID)
+def startf(DB, ID, selected_analyzed_position, startposition, endposition, rows, cdr_length=14):
+    create_files(DB, ID, cdr_length, selected_analyzed_position, startposition, endposition, rows)
     print("\nFirst step (translate sequences to amino acids):")
     print("First step strats...\n")
     sequence_legth = 231
@@ -364,14 +361,14 @@ def startf(DB, ID, cdr_length, selected_analyzed_position, startposition, endpos
             end = 0
             triple = 0
             nuclotides_sub_seq = ""
-
+            complete_cdr_length = cdr_length * 3
             startswitcher = {
-                'Select Region': 313,
+                'Select Region': 112,
                 'All The Sequence': 0,
                 'Select Start And End Position': int(startposition),
             }
             endswitcher = {
-                'Select Region': 356,
+                'Select Region': 112 + complete_cdr_length,
                 'All The Sequence': len(dna) - ((len(dna) % 3) * 3),
                 'Select Start And End Position': int(int(endposition) - (int(endposition) % 3) * 3)
             }
@@ -383,7 +380,8 @@ def startf(DB, ID, cdr_length, selected_analyzed_position, startposition, endpos
 
                 if dna[i] == "N" and dna[i + 1] == "N" and dna[i + 2] == "N":
                     protein_sequence += "x"
-                elif dna[i] == "N" or dna[i + 1] == "N" or dna[i + 2] == "N" and dna[i] != "-" and dna[i + 1] != "-" and \
+                elif dna[i] == "N" or dna[i + 1] == "N" or dna[i + 2] == "N" and dna[i] != "-" and\
+                        dna[i + 1] != "-" and \
                         dna[i + 2] != "-":
                     protein_sequence += "x"
                 elif dna[i] == "-" and dna[i + 1] == "-" and dna[i + 2] == "-":
@@ -435,14 +433,15 @@ def startf(DB, ID, cdr_length, selected_analyzed_position, startposition, endpos
 
                 temp_pos = temp_pos + 9
 
-        csv_writer.writerow(
-        [seqID, dna, protein_sequence, ai, subjectID, cloneID, sampleID, cdr3_seq])
-        print("Translating DONE!")
+            csv_writer.writerow(
+                [seqID, dna, protein_sequence, ai, subjectID, cloneID, sampleID, cdr3_seq])
+            print("Translating DONE!")
+
 
 def calculateHammingDistance(protein1, protein2):
     count = 0
     rangeofseq = min(len(protein1), len(protein2))
-    for j in range(1, rangeofseq - 1):
+    for j in range(0, rangeofseq):
         if protein1[j] == protein2[j]:
             pass
         else:
@@ -451,6 +450,7 @@ def calculateHammingDistance(protein1, protein2):
         return 0
 
     return count
+
 
 def calculateAminoAcidsSimilarty(protein1, protein2):
     count = 0
@@ -465,34 +465,41 @@ def calculateAminoAcidsSimilarty(protein1, protein2):
     return count
 
 
-def show_Nuclotides_netwrok_stats(networkx_graph):
+def show_Nuclotides_netwrok_stats(networkx_graph, network_name):
     max = 0
-    thekey = None
+    the_key = None
     result = ""
+    sequences = ""
     for key in aa_count:
+        result += "\n"
         result += (' ' + key + '  ')
         lst = aa_count.get(key)
         result += (str(lst[0]) + '  ' + ' '.join(str(x.sub_seq) for x in lst[1:]))
         if lst[0] > max:
             max = lst[0]
             sequences = aa_count.get(key)
-            thekey = key
-    result += (str(thekey) + '   The max encountered sub sequence is ' + str(max) + '  ' + ' '.join(
+            the_key = key
+    result += "\n"
+    result += (str(the_key) + '   The max encountered sub sequence is ' + str(max) + '  ' + ' '.join(
         str(x.sub_seq) + ' ' + str(x.position) for x in sequences[1:]))
     most_connected_node_counter = [0, None]
     for node, node_attrs in tqdm(networkx_graph.nodes(data=True)):
         if networkx_graph.degree(node) > most_connected_node_counter[0]:
             most_connected_node_counter[1] = node
             most_connected_node_counter[0] = networkx_graph.degree(node)
+    result += "\n"
     result += str(most_connected_node_counter[1]) + ' with this count of connectivity' + str(
         most_connected_node_counter[0])
+    with open(str(network_name) + "network_stats.txt", "w") as file:
+        file.write(str(result))
     return result
 
 
 def draw_graph3(networkx_graph, notebook=True, output_filename='empgraph.html', show_buttons=False,
                 only_physics_buttons=False):
     from pyvis import network as net
-    real_nodes_count=0
+    actual_total_appearances = 0
+    real_nodes_count = 0
     real_edges_count = 0
     nuclotide_count_dict = {}
     # make a pyvis network
@@ -521,25 +528,25 @@ def draw_graph3(networkx_graph, notebook=True, output_filename='empgraph.html', 
                 x.append(node)
 
                 for node1 in x[1:]:
-                    title += " the subject id is : " + str(
-                        node1.subject) + " The sequence id is :" + str(node1.seq_id)+"\n"
+                    title += str(x[0]) + " the subject id is : " + str(
+                        node1.subject) + " The sequence id is :" + str(node1.seq_id) + "\n"
                 if node.sub_seq not in pyvis_graph.nodes:
                     pyvis_graph.add_node(node.sub_seq, title=title,
                                          label=str(str(node.sub_seq)), color=color1, )
-                    real_nodes_count+=1
+                    real_nodes_count += 1
             else:
                 x[0] += 1
                 nuclotide_count_dict[node.sub_seq] = x
                 x.append(node)
                 if x[0] >= 2:
                     for node1 in x[1:]:
-                        title += " the subject id is : " + str(
+                        title += str(x[0]) + " the subject id is : " + str(
                             node1.subject) + " The sequence id is :" + str(node1.seq_id) + "\n"
                     if node.sub_seq not in pyvis_graph.nodes:
                         pyvis_graph.add_node(node.sub_seq, title=title,
                                              label=str(str(node.sub_seq)), color=color1, )
                         real_nodes_count += 1
-
+                        actual_total_appearances += x[0]
         else:
             x = [0]
             x[0] = 1
@@ -563,7 +570,7 @@ def draw_graph3(networkx_graph, notebook=True, output_filename='empgraph.html', 
                         pyvis_graph.add_edge(source.sub_seq, target.sub_seq, title=str(edge_attrs['weight']),
                                              value=int(edge_attrs['weight']), weight=int(edge_attrs['weight'])
                                              , color='yellow')
-                        real_edges_count+=1
+                        real_edges_count += 1
 
     # turn buttons on
     if show_buttons:
@@ -580,12 +587,13 @@ def draw_graph3(networkx_graph, notebook=True, output_filename='empgraph.html', 
         <div class="header">
         <h2>
         '''
-    extra_html+="real nodes count ="+str(real_nodes_count)+"\n"
+    extra_html += "real nodes count =" + str(real_nodes_count) + "\n"
+    extra_html += "actual total appearances =" + str(actual_total_appearances) + "\n"
     extra_html += "real edges count =" + str(real_edges_count) + "\n"
-    extra_html+="</h2> <div class='title'>"
+    extra_html += "</h2> <div class='title'>"
     extra_html += nx.info(networkx_graph)
     #######################################
-    extra_html += "Network density:" + str(nx.density(networkx_graph))+"\n"
+    extra_html += "Network density:" + str(nx.density(networkx_graph)) + "\n"
     extra_html += ""
 
     extra_html += '''
@@ -622,7 +630,7 @@ def draw_kmers_graph3(networkx_graph, notebook=True, output_filename='empgraph',
                       only_physics_buttons=False):
     # import
     from pyvis import network as net
-    real_nodes_count=0
+    real_nodes_count = 0
     real_edges_count = 0
     # make a pyvis network
     pyvis_graph = net.Network(height='900px', width='900px', bgcolor='#222222', font_color='white')
@@ -641,7 +649,7 @@ def draw_kmers_graph3(networkx_graph, notebook=True, output_filename='empgraph',
     nodes_count = len(networkx_graph.nodes(data=True))
     for node, node_attrs in tqdm(networkx_graph.nodes(data=True)):
         color1 = switcher.get(str(node.subject))
-        x=nuclotide_count_dict.get(node.sub_seq)
+        x = nuclotide_count_dict.get(node.sub_seq)
         if x:
 
             title = "The node Sub sequence is " + str(node.sub_seq)
@@ -690,9 +698,9 @@ def draw_kmers_graph3(networkx_graph, notebook=True, output_filename='empgraph',
             if x[0] >= 2:
                 if y:
                     if y[0] >= 2:
-                            pyvis_graph.add_edge(source.sub_seq, target.sub_seq, title=str(3 - int(edge_attrs['weight'])),
-                                                 value=3 - int(edge_attrs['weight']), weight=3 - int(edge_attrs['weight']))
-                            real_edges_count += 1
+                        pyvis_graph.add_edge(source.sub_seq, target.sub_seq, title=str(3 - int(edge_attrs['weight'])),
+                                             value=3 - int(edge_attrs['weight']), weight=3 - int(edge_attrs['weight']))
+                        real_edges_count += 1
 
         # turn buttons on
     if show_buttons:
@@ -703,7 +711,6 @@ def draw_kmers_graph3(networkx_graph, notebook=True, output_filename='empgraph',
     # nx.number_weakly_connected_components(G)
     if nx.number_connected_components(networkx_graph):
         nx.number_connected_components(networkx_graph)
-
 
     pyvis_graph.save_graph(output_filename + ".html")
     soup = BeautifulSoup(open(output_filename + ".html"), 'html.parser')
@@ -732,27 +739,27 @@ def draw_kmers_graph3(networkx_graph, notebook=True, output_filename='empgraph',
 
 def compare_nucoltides(node1, nodes_list, nucoltides_kmers_nets_G, key):
     for node2 in nodes_list:
-        if node1.sub_seq != node2.sub_seq and node1.sub_seq[0:2] in node2.sub_seq or node1.sub_seq[
-                                                                                     3:5] in node2.sub_seq or node1.sub_seq[
-                                                                                                              6:8] in node2.sub_seq:
+        if node1.sub_seq != node2.sub_seq and node1.sub_seq[0:2] in node2.sub_seq or node1.sub_seq[3:5] in\
+                node2.sub_seq or node1.sub_seq[6:8] in node2.sub_seq:
             w = calculateHammingDistance(node1.sub_seq, node2.sub_seq)
             if w:
                 nucoltides_kmers_nets_G.add_edge(node1, node2, weight=w)
 
 
 def create_amino_acid_netwrok():
-    os.chdir('Amino_acid')
-    AA_G = nx.Graph(name='AA Netwrok')
-    for k in amino_acids_kmers_nets_G.keys():
+    os.chdir(str(directory + "\\") +'Amino_acid')
+    AA_G = nx.Graph(name='AA Network')
+    for key in amino_acids_kmers_nets_G.keys():
         AA_G.clear()
-        for a_node in amino_acids_kmers_nets_G.get(k):
-            for b_node in amino_acids_kmers_nets_G.get(k):
+        for a_node in amino_acids_kmers_nets_G.get(key):
+            for b_node in amino_acids_kmers_nets_G.get(key):
                 if calculateAminoAcidsSimilarty(a_node.sub_seq, b_node.sub_seq):
                     AA_G.add_edge(a_node, b_node, weight=calculateAminoAcidsSimilarty(a_node.sub_seq, b_node.sub_seq))
 
-        draw_graph3(AA_G, output_filename=str(k) + '_AA_G_graph_output', show_buttons=True,
+        draw_graph3(AA_G, output_filename=str(key) + '_AA_G_graph_output',
+                    show_buttons=True,
                     notebook=False)
-        AA_G = nx.Graph(name='AA Netwrok')
+        show_Nuclotides_netwrok_stats(AA_G, str(key) + '_NC_G_graph_output')
     os.chdir('..')
 
 
@@ -775,17 +782,17 @@ def create_nuclotides_netwrok():
         for x in tqdm(threads):
             x.join()
         print("printing network")
-        os.chdir('pajek')
+        os.chdir(pajek)
         nx.write_pajek(nucoltides_kmers_nets_G, str(key) + '_NC_G_graph_output1.net')
         os.chdir('..')
         make_netwrok_labels(nucoltides_kmers_nets_G, key)
-        os.chdir('nucleotides')
+        os.chdir(nucleotides)
         draw_kmers_graph3(nucoltides_kmers_nets_G,
                           output_filename=str(key) + '_NC_G_graph_output',
                           show_buttons=True,
                           notebook=False)
 
-        show_Nuclotides_netwrok_stats(nucoltides_kmers_nets_G)
+        show_Nuclotides_netwrok_stats(nucoltides_kmers_nets_G, str(key) + '_NC_G_graph_output')
         os.chdir('..')
 
 
@@ -808,22 +815,19 @@ def create_replaced_nuclotides_netwrok():
         for x in tqdm(threads):
             x.join()
         print("printing network")
-        os.chdir('pajek')
-        nx.write_pajek(replaced_nucoltides_kmers_nets_G, str(key) + '_replaced_NC_G_graph_output1.net')
+        os.chdir(pajek)
+        nx.write_pajek(replaced_nucoltides_kmers_nets_G,
+                        str(key) + '_replaced_NC_G_graph_output1.net')
         os.chdir('..')
         make_netwrok_labels(replaced_nucoltides_kmers_nets_G, key)
-        os.chdir('nucleotides')
+        os.chdir(nucleotides)
         draw_kmers_graph3(replaced_nucoltides_kmers_nets_G,
-                          output_filename=str(key) + '_replaced_NC_G_graph_output.html',
+                          output_filename= str(key) + '_replaced_NC_G_graph_output.html',
                           show_buttons=True,
                           notebook=False)
 
-        show_Nuclotides_netwrok_stats(replaced_nucoltides_kmers_nets_G)
+        show_Nuclotides_netwrok_stats(replaced_nucoltides_kmers_nets_G, str(key) + '_replaced_NC_G_graph_output')
         os.chdir('..')
-
-
-def replace_amino_occures(poition):
-    nodes_list = nucoltides_kmers_nets.get(poition)
 
 
 def make_netwrok_labels(networkx_graph, key):
@@ -840,7 +844,7 @@ def make_netwrok_labels(networkx_graph, key):
             edge_attrs['value'] = edge_attrs['weight']
             G_labels.add_edge(source.sub_seq, target.sub_seq, weight=int(edge_attrs['weight']),
                               title=str(edge_attrs['weight']))
-    os.chdir('Amino_acid')
+    os.chdir(Amino_acid)
     nx.write_pajek(G_labels, str(key) + '_labels_output1.net')
     os.chdir('..')
 
@@ -859,16 +863,16 @@ amino_acids_kmers_nets_G = {}
 
 NC_G = nx.Graph(name='AA Netwrok')
 aa_count = {"TTT": [0], "CTT": [0], "ATT": [0], "GTT": [0],
-                 "TTC": [0], "CTC": [0], "ATC": [0], "GTC": [0],
-                 "TTA": [0], "CTA": [0], "ATA": [0], "GTA": [0],
-                 "TTG": [0], "CTG": [0], "ATG": [0], "GTG": [0],
-                 "TCT": [0], "CCT": [0], "ACT": [0], "GCT": [0],
-                 "TCC": [0], "CCC": [0], "ACC": [0], "GCC": [0],
-                 "TCA": [0], "CCA": [0], "ACA": [0], "GCA": [0],
-                 "TCG": [0], "CCG": [0], "ACG": [0], "GCG": [0],
-                 "TAT": [0], "CAT": [0], "AAT": [0], "GAT": [0],
-                 "TAC": [0], "CAC": [0], "AAC": [0], "GAC": [0],
-                 "TAA": [0], "CAA": [0], "AAA": [0], "GAA": [0],
+            "TTC": [0], "CTC": [0], "ATC": [0], "GTC": [0],
+            "TTA": [0], "CTA": [0], "ATA": [0], "GTA": [0],
+            "TTG": [0], "CTG": [0], "ATG": [0], "GTG": [0],
+            "TCT": [0], "CCT": [0], "ACT": [0], "GCT": [0],
+            "TCC": [0], "CCC": [0], "ACC": [0], "GCC": [0],
+            "TCA": [0], "CCA": [0], "ACA": [0], "GCA": [0],
+            "TCG": [0], "CCG": [0], "ACG": [0], "GCG": [0],
+            "TAT": [0], "CAT": [0], "AAT": [0], "GAT": [0],
+            "TAC": [0], "CAC": [0], "AAC": [0], "GAC": [0],
+            "TAA": [0], "CAA": [0], "AAA": [0], "GAA": [0],
             "TAG": [0], "CAG": [0], "AAG": [0], "GAG": [0],
             "TGT": [0], "CGT": [0], "AGT": [0], "GGT": [0],
             "TGC": [0], "CGC": [0], "AGC": [0], "GGC": [0],
@@ -878,16 +882,16 @@ aa_count = {"TTT": [0], "CTT": [0], "ATT": [0], "GTT": [0],
             }
 aa_most_frequent = {}
 amino_acid_list = ['ATA', 'ATC', 'ATT', 'ATG',
-                'ACA', 'ACC', 'ACG', 'ACT',
-                'AAC', 'AAT', 'AAA', 'AAG',
-                'AGC', 'AGT', 'AGA', 'AGG',
-                'CTA', 'CTC', 'CTG', 'CTT',
-                'CCA', 'CCC', 'CCG', 'CCT',
-                'CAC', 'CAT', 'CAA', 'CAG',
-                'CGA', 'CGC', 'CGG', 'CGT',
-                'GTA', 'GTC', 'GTG', 'GTT',
-                'GCA', 'GCC', 'GCG', 'GCT',
-                'GAC', 'GAT', 'GAA', 'GAG',
+                   'ACA', 'ACC', 'ACG', 'ACT',
+                   'AAC', 'AAT', 'AAA', 'AAG',
+                   'AGC', 'AGT', 'AGA', 'AGG',
+                   'CTA', 'CTC', 'CTG', 'CTT',
+                   'CCA', 'CCC', 'CCG', 'CCT',
+                   'CAC', 'CAT', 'CAA', 'CAG',
+                   'CGA', 'CGC', 'CGG', 'CGT',
+                   'GTA', 'GTC', 'GTG', 'GTT',
+                   'GCA', 'GCC', 'GCG', 'GCT',
+                   'GAC', 'GAT', 'GAA', 'GAG',
                    'GGA', 'GGC', 'GGG', 'GGT',
                    'TCA', 'TCC', 'TCG', 'TCT',
                    'TTC', 'TTT', 'TTA', 'TTG',
