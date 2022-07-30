@@ -20,6 +20,7 @@ import pickle
 from threading import Thread
 # A LIBRARY TO WORK WITH THE OPERATION SYSTEM
 import os
+from matplotlib import pyplot as plt
 
 
 #####################################################################################################################
@@ -220,7 +221,7 @@ def replace_nucleotide(DB, ID, selected_analyzed_position, startposition, endpos
 
                 if dna[i] == "N" and dna[i + 1] == "N" and dna[i + 2] == "N":
                     protein_sequence += "x"
-                elif dna[i] == "N" or dna[i + 1] == "N" or dna[i + 2] == "N" and dna[i] != "-" and\
+                elif dna[i] == "N" or dna[i + 1] == "N" or dna[i + 2] == "N" and dna[i] != "-" and \
                         dna[i + 1] != "-" and \
                         dna[i + 2] != "-":
                     protein_sequence += "x"
@@ -277,6 +278,10 @@ def replace_nucleotide(DB, ID, selected_analyzed_position, startposition, endpos
                 temp_pos = temp_pos + 9
 
         print("Translating DONE!")
+        save_fasta = open(str(DB) + str(ID) + str(selected_analyzed_position) + str(startposition)
+                          + str(endposition) + str(rows) + str(cdr_length) + "_replaced_cdr3_fasta.fasta", "w+")
+        save_fasta.write(protein_sequence)
+        save_fasta.close()
 
 
 def startf(DB, ID, selected_analyzed_position, startposition, endposition, rows, cdr_length=14):
@@ -326,9 +331,13 @@ def startf(DB, ID, selected_analyzed_position, startposition, endposition, rows,
     command = select_query(DB, ID, cdr_length)
     mycursor.execute(command)
     global Selected_Number_Of_Rows
+    count=0
     kmers_G = nx.Graph(name='kmers_of_position')
     seq = fetch_based_on_row_count(rows, mycursor)
     print("Translating starts ....")
+    save_fasta = open(str(DB) + str(ID) + str(selected_analyzed_position) + str(startposition)
+                      + str(endposition) + str(rows) + str(cdr_length) + "cdr3_fasta.fasta", "w+")
+    save_fasta.write(">seq"+str(count))
     with open(toFile, 'w', newline='') as new_file:
         csv_writer = csv.writer(new_file)
         csv_writer.writerow(
@@ -380,7 +389,7 @@ def startf(DB, ID, selected_analyzed_position, startposition, endposition, rows,
 
                 if dna[i] == "N" and dna[i + 1] == "N" and dna[i + 2] == "N":
                     protein_sequence += "x"
-                elif dna[i] == "N" or dna[i + 1] == "N" or dna[i + 2] == "N" and dna[i] != "-" and\
+                elif dna[i] == "N" or dna[i + 1] == "N" or dna[i + 2] == "N" and dna[i] != "-" and \
                         dna[i + 1] != "-" and \
                         dna[i + 2] != "-":
                     protein_sequence += "x"
@@ -436,6 +445,26 @@ def startf(DB, ID, selected_analyzed_position, startposition, endposition, rows,
             csv_writer.writerow(
                 [seqID, dna, protein_sequence, ai, subjectID, cloneID, sampleID, cdr3_seq])
             print("Translating DONE!")
+            save_fasta.write(dna)
+            count += 1
+            save_fasta.write("\n>seq"+str(count)+"\n")
+        save_fasta.close()
+
+
+def plot_most_freq():
+    names = aa_most_frequent.keys()
+    values = [most_freq_lst.most_freq_lst]
+
+    plt.figure(figsize=(9, 3))
+
+    plt.subplot(131)
+    plt.bar(names, values)
+    plt.subplot(132)
+    plt.scatter(names, values)
+    plt.subplot(133)
+    plt.plot(names, values)
+    plt.suptitle('Categorical Plotting')
+    plt.show()
 
 
 def calculateHammingDistance(protein1, protein2):
@@ -594,12 +623,17 @@ def draw_graph3(networkx_graph, notebook=True, output_filename='empgraph.html', 
     extra_html += nx.info(networkx_graph)
     #######################################
     extra_html += "Network density:" + str(nx.density(networkx_graph)) + "\n"
-    extra_html += ""
+    extra_html += "" 
+    plt.plot(list(nuclotide_count_dict.keys()), [nuclotide_count_dict.get(x)[0] for x in nuclotide_count_dict.keys()])
+    plt.savefig("tempfig.png")
+    plt.show()
+   
 
     extra_html += '''
             </div>
         </div>
     </div>'''
+   
 
     div = soup.select("#config")
     soup.find_all('div', {"id": "mynetwork"})[-1].insert_after(BeautifulSoup(extra_html, 'html.parser'))
@@ -725,7 +759,7 @@ def draw_kmers_graph3(networkx_graph, notebook=True, output_filename='empgraph',
     extra_html += nx.info(networkx_graph)
     #######################################
     extra_html += "Network density:" + str(nx.density(networkx_graph)) + "\n"
-    extra_html += ""
+    extra_html += "" + plt.plot(nuclotide_count_dict.keys(),nuclotide_count_dict.values)
 
     extra_html += '''
                </div>
@@ -737,9 +771,10 @@ def draw_kmers_graph3(networkx_graph, notebook=True, output_filename='empgraph',
         file.write(str(soup))
 
 
+
 def compare_nucoltides(node1, nodes_list, nucoltides_kmers_nets_G, key):
     for node2 in nodes_list:
-        if node1.sub_seq != node2.sub_seq and node1.sub_seq[0:2] in node2.sub_seq or node1.sub_seq[3:5] in\
+        if node1.sub_seq != node2.sub_seq and node1.sub_seq[0:2] in node2.sub_seq or node1.sub_seq[3:5] in \
                 node2.sub_seq or node1.sub_seq[6:8] in node2.sub_seq:
             w = calculateHammingDistance(node1.sub_seq, node2.sub_seq)
             if w:
@@ -747,7 +782,7 @@ def compare_nucoltides(node1, nodes_list, nucoltides_kmers_nets_G, key):
 
 
 def create_amino_acid_netwrok():
-    os.chdir(str(directory + "\\") +'Amino_acid')
+    os.chdir(str(directory + "\\") + 'Amino_acid')
     AA_G = nx.Graph(name='AA Network')
     for key in amino_acids_kmers_nets_G.keys():
         AA_G.clear()
@@ -817,12 +852,12 @@ def create_replaced_nuclotides_netwrok():
         print("printing network")
         os.chdir(pajek)
         nx.write_pajek(replaced_nucoltides_kmers_nets_G,
-                        str(key) + '_replaced_NC_G_graph_output1.net')
+                       str(key) + '_replaced_NC_G_graph_output1.net')
         os.chdir('..')
         make_netwrok_labels(replaced_nucoltides_kmers_nets_G, key)
         os.chdir(nucleotides)
         draw_kmers_graph3(replaced_nucoltides_kmers_nets_G,
-                          output_filename= str(key) + '_replaced_NC_G_graph_output.html',
+                          output_filename=str(key) + '_replaced_NC_G_graph_output.html',
                           show_buttons=True,
                           notebook=False)
 
@@ -857,6 +892,7 @@ nucoltides_kmers_nets_edges_count = {}
 replaced_nucoltides_kmers_nets = {}
 replaced_nucoltides_kmers_nets_edges_count = {}
 amino_acid_kmers_nets = {}
+
 G = nx.Graph(name='CDR3 from DB')
 nucoltides_kmers_nets_G = {}
 amino_acids_kmers_nets_G = {}
@@ -900,3 +936,5 @@ amino_acid_list = ['ATA', 'ATC', 'ATT', 'ATG',
 
 proteinNumber = 64
 countrow = 0
+
+
