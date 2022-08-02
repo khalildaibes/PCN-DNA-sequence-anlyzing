@@ -6,7 +6,7 @@ import csv
 # A LIBRARY TO WORK WITH HTML FILES (READ\WRITE)
 import numbers
 from datetime import datetime
-
+import pandas as pd
 from bs4 import BeautifulSoup
 # A LIBRARY TO WORK VIEW PROGRESS IN CONSOLE WINDOW
 from tqdm import tqdm
@@ -97,20 +97,20 @@ def select_query(db, id, cdr_length=14):
     cdr_length = 14
     # SPECIFIC SUBJECTS AND SPECIFIC CDR LENGTHS
     if id != "all" and cdr_length != "not specific":
-        cmd = "select seq.*, coll.* from {}.sequences as seq inner join {}.sequence_collapse as coll on seq.ai=coll.seq_ai WHERE seq.subject_id={} AND seq.functional=1 AND coll.instances_in_subject !=0 AND coll.copy_number_in_subject > 1  AND seq.deletions is null AND  seq.insertions is null AND LENGTH(seq.cdr3_aa)={} ".format(
-            db, db, id, cdr_length)
+        cmd = "select seq.*, coll.*,sammet.* from {}.sequences as seq inner join {}.sequence_collapse as coll on seq.ai=coll.seq_ai inner join {}.sample_metadata as sammet on sammet.sample_id=seq.sample_id WHERE seq.subject_id={} AND seq.functional=1 AND coll.instances_in_subject !=0 AND coll.copy_number_in_subject > 1  AND seq.deletions is null AND  seq.insertions is null AND LENGTH(seq.cdr3_aa)={} AND (sammet.value like'%spike+%' OR sammet.value like'%spike-%') ORDER BY RAND()".format(
+            db, db, db, id, cdr_length)
     # ALL SUBJECTS AND SPECIFIC CDR LENGTHS
     elif id == "all" and cdr_length != "not specific":
-        cmd = "select seq.*, coll.* from {}.sequences as seq inner join {}.sequence_collapse as coll on seq.ai=coll.seq_ai WHERE seq.functional=1 AND coll.instances_in_subject !=0 AND coll.copy_number_in_subject > 1  AND seq.deletions is null AND  seq.insertions is null AND LENGTH(seq.cdr3_aa)={} ORDER BY RAND()".format(
-            db, db, cdr_length)
+        cmd = "select seq.*, coll.*,sammet.* from {}.sequences as seq inner join {}.sequence_collapse as coll on seq.ai=coll.seq_ai inner join {}.sample_metadata as sammet on sammet.sample_id=seq.sample_id WHERE seq.functional=1 AND coll.instances_in_subject !=0 AND coll.copy_number_in_subject > 1  AND seq.deletions is null AND  seq.insertions is null AND LENGTH(seq.cdr3_aa)={} ORDER BY RAND() AND(sammet.value like'%spike+%' OR sammet.value like'%spike-%') ORDER BY RAND()".format(
+            db, db, db, cdr_length)
     # SPECIFIC SUBJECTS AND ALL CDR LENGTHS
     elif id != "all" and cdr_length == "not specific":
-        cmd = "select seq.*, coll.* from {}.sequences as seq inner join {}.sequence_collapse as coll on seq.ai=coll.seq_ai WHERE seq.subject_id={} AND seq.functional=1 AND coll.instances_in_subject !=0 AND coll.copy_number_in_subject > 1  AND seq.deletions is null AND seq.insertions is null AND LENGTH(seq.cdr3_aa)>8 ".format(
-            db, db, id)
+        cmd = "select seq.*, coll.*,sammet.* from {}.sequences as seq inner join {}.sequence_collapse as coll on seq.ai=coll.seq_ai inner join {}.sample_metadata as sammet on sammet.sample_id=seq.sample_id WHERE seq.subject_id={} AND seq.functional=1 AND coll.instances_in_subject !=0 AND coll.copy_number_in_subject > 1  AND seq.deletions is null AND seq.insertions is null AND LENGTH(seq.cdr3_aa)>8 AND  (sammet.value like'%spike+%' OR sammet.value like'%spike-%') ORDER BY RAND()".format(
+            db, db, db, id)
     # ALL SUBJECTS AND ALL CDR LENGTHS
     elif id == "all" and cdr_length == "not specific":
-        cmd = "select seq.*, coll.* from {}.sequences as seq inner join {}.sequence_collapse as coll on seq.ai=coll.seq_ai WHERE seq.functional=1 AND coll.instances_in_subject !=0 AND coll.copy_number_in_subject > 1  AND seq.deletions is null AND  seq.insertions is null AND LENGTH(seq.cdr3_aa)>8 ORDER BY RAND()".format(
-            db, db, id)
+        cmd = "select seq.*, coll.*,sammet.* from {}.sequences as seq inner join {}.sequence_collapse as coll on seq.ai=coll.seq_ai inner join {}.sample_metadata as sammet on sammet.sample_id=seq.sample_id WHERE seq.functional=1 AND coll.instances_in_subject !=0 AND coll.copy_number_in_subject > 1  AND seq.deletions is null AND  seq.insertions is null AND LENGTH(seq.cdr3_aa)>8  AND (sammet.value like'%spike+%' OR sammet.value like'%spike-%') ORDER BY RAND()".format(
+            db, db, db, id)
 
     return cmd
 
@@ -195,6 +195,7 @@ def replace_nucleotide(DB, ID, selected_analyzed_position, startposition, endpos
             seqID = line["seq_id"]
             sampleID = line["sample_id"]
             subjectID = line["subject_id"]
+            spike = line["value"]
             # Generate protein sequence
             j = 0
             temp_pos = 0
@@ -314,7 +315,9 @@ def startf(DB, ID, selected_analyzed_position, startposition, endposition, rows,
                }
 
     for key in protein.keys():
+
         if protein.get(key) in aa_most_frequent.keys():
+
             if key not in aa_most_frequent.get(protein.get(key)):
                 old_list = aa_most_frequent[protein.get(key)]
                 old_list.append(key)
@@ -331,13 +334,13 @@ def startf(DB, ID, selected_analyzed_position, startposition, endposition, rows,
     command = select_query(DB, ID, cdr_length)
     mycursor.execute(command)
     global Selected_Number_Of_Rows
-    count=0
+    count = 0
     kmers_G = nx.Graph(name='kmers_of_position')
     seq = fetch_based_on_row_count(rows, mycursor)
     print("Translating starts ....")
     save_fasta = open(str(DB) + str(ID) + str(selected_analyzed_position) + str(startposition)
                       + str(endposition) + str(rows) + str(cdr_length) + "cdr3_fasta.fasta", "w+")
-    save_fasta.write(">seq"+str(count))
+    save_fasta.write(">seq" + str(count))
     with open(toFile, 'w', newline='') as new_file:
         csv_writer = csv.writer(new_file)
         csv_writer.writerow(
@@ -350,6 +353,7 @@ def startf(DB, ID, selected_analyzed_position, startposition, endposition, rows,
             # fix the germline to match the cdr with N's
             germ = line['germline']
             cdr3_seq = line['cdr3_aa']
+            spike = line["value"]
             cdr3Length = line['cdr3_num_nts']
             postCDR = line['post_cdr3_length']
             x = int(cdr3Length) + int(postCDR)
@@ -385,6 +389,7 @@ def startf(DB, ID, selected_analyzed_position, startposition, endposition, rows,
             startswitcher = int(startswitcher.get(selected_analyzed_position))
             endswitcher = int(endswitcher.get(selected_analyzed_position))
             tripleAA = ""
+
             for i in range(startswitcher, endswitcher, 3):
 
                 if dna[i] == "N" and dna[i + 1] == "N" and dna[i + 2] == "N":
@@ -402,12 +407,24 @@ def startf(DB, ID, selected_analyzed_position, startposition, endposition, rows,
                     tripleAA += protein[dna[i:i + 3]]
                     nuclotides_sub_seq += dna[i:i + 3]
                     triple += 1
+
                     most_freq_lst = aa_most_frequent.get(protein[dna[i:i + 3]])
                     index = most_freq_lst.index(dna[i:i + 3])
                     most_freq_lst[index + 1] += 1
                     aa_most_frequent[protein[dna[i:i + 3]]] = most_freq_lst
 
                     if triple == 3:
+                        if tripleAA not in spike_dic.keys():
+                            spkie_count = [0, 0]
+                            spike_dic[tripleAA] = spkie_count
+                        if "spike+" in str(spike):
+                            x = spike_dic.get(tripleAA)
+                            x[0] += 1
+                            spike_dic[tripleAA] = x
+                        elif "spike-" in str(spike):
+                            x = spike_dic.get(tripleAA)
+                            x[1] += 1
+                            spike_dic[tripleAA] = x
 
                         if protein[dna[i:i + 3]] != "-" and protein[dna[i:i + 3]] != "*":
                             a_sequence = line['sequence']  # protein a node
@@ -443,27 +460,50 @@ def startf(DB, ID, selected_analyzed_position, startposition, endposition, rows,
                 temp_pos = temp_pos + 9
 
             csv_writer.writerow(
-                [seqID, dna, protein_sequence, ai, subjectID, cloneID, sampleID, cdr3_seq])
+                [seqID, dna, protein_sequence, ai, subjectID, cloneID, sampleID, cdr3_seq, spike])
             print("Translating DONE!")
             save_fasta.write(dna)
             count += 1
-            save_fasta.write("\n>seq"+str(count)+"\n")
+            save_fasta.write("\n>seq" + str(count) + "\n")
         save_fasta.close()
 
 
-def plot_most_freq():
-    names = aa_most_frequent.keys()
-    values = [most_freq_lst.most_freq_lst]
+def get_spike_for_kmer(key):
+    appearances_count = spike_dic.get(key)
+    if float(appearances_count[0] + appearances_count[1]) * 0.9 <= float(appearances_count[0]):
+        return int(1)
+    elif float(appearances_count[0] + appearances_count[1]) * 0.9 <= float(appearances_count[1]):
+        return int(0)
 
-    plt.figure(figsize=(9, 3))
 
-    plt.subplot(131)
-    plt.bar(names, values)
-    plt.subplot(132)
-    plt.scatter(names, values)
-    plt.subplot(133)
-    plt.plot(names, values)
-    plt.suptitle('Categorical Plotting')
+def get_spike_plus_sum(key):
+    appearances_count = spike_dic.get(key)
+    return appearances_count[0]
+
+
+def get_spike_minus_sum(key):
+    appearances_count = spike_dic.get(key)
+    return appearances_count[1]
+
+
+def plot_spikes(figure_directory):
+    data = pd.DataFrame()
+    spike_plus_sum = 0
+    spike_minus_sum = 0
+    data["X"] = list(spike_dic.keys())
+    tmplst = []
+    for x in spike_dic.keys():
+        tmplst.append(get_spike_for_kmer(x))
+        spike_plus_sum += get_spike_plus_sum(x)
+        spike_minus_sum += get_spike_minus_sum(x)
+    data["Y"] = tmplst
+    font1 = {'family': 'serif', 'color': 'blue', 'size': 20}
+    font2 = {'family': 'serif', 'color': 'darkred', 'size': 15}
+    plt.title("number of spike plus =" + str(spike_plus_sum) + " number of spike minus =" + str(spike_minus_sum), fontdict=font1)
+    plt.scatter(x="X", y="Y", data=data)
+    plt.xlabel("AA sub sequence 3 mers", fontdict=font2)
+    plt.ylabel("'spike+'=1; 'spike-'=0", fontdict=font2)
+    plt.savefig("_spike_fig.png")
     plt.show()
 
 
@@ -623,17 +663,15 @@ def draw_graph3(networkx_graph, notebook=True, output_filename='empgraph.html', 
     extra_html += nx.info(networkx_graph)
     #######################################
     extra_html += "Network density:" + str(nx.density(networkx_graph)) + "\n"
-    extra_html += "" 
-    plt.plot(list(nuclotide_count_dict.keys()), [nuclotide_count_dict.get(x)[0] for x in nuclotide_count_dict.keys()])
-    plt.savefig("tempfig.png")
-    plt.show()
-   
+    extra_html += ""
+    # plt.plot(list(nuclotide_count_dict.keys()), [nuclotide_count_dict.get(x)[0] for x in nuclotide_count_dict.keys()])
+    # plt.savefig("tempfig.png")
+    # plt.show()
 
     extra_html += '''
             </div>
         </div>
     </div>'''
-   
 
     div = soup.select("#config")
     soup.find_all('div', {"id": "mynetwork"})[-1].insert_after(BeautifulSoup(extra_html, 'html.parser'))
@@ -759,7 +797,7 @@ def draw_kmers_graph3(networkx_graph, notebook=True, output_filename='empgraph',
     extra_html += nx.info(networkx_graph)
     #######################################
     extra_html += "Network density:" + str(nx.density(networkx_graph)) + "\n"
-    extra_html += "" + plt.plot(nuclotide_count_dict.keys(),nuclotide_count_dict.values)
+    extra_html += "" + plt.plot(nuclotide_count_dict.keys(), nuclotide_count_dict.values)
 
     extra_html += '''
                </div>
@@ -769,7 +807,6 @@ def draw_kmers_graph3(networkx_graph, notebook=True, output_filename='empgraph',
     soup.find_all('div', {"id": "mynetwork"})[-1].insert_after(BeautifulSoup(extra_html, 'html.parser'))
     with open(output_filename + ".html", "w") as file:
         file.write(str(soup))
-
 
 
 def compare_nucoltides(node1, nodes_list, nucoltides_kmers_nets_G, key):
@@ -795,7 +832,9 @@ def create_amino_acid_netwrok():
                     show_buttons=True,
                     notebook=False)
         show_Nuclotides_netwrok_stats(AA_G, str(key) + '_NC_G_graph_output')
+    plot_spikes(str(directory))
     os.chdir('..')
+
 
 
 def create_nuclotides_netwrok():
@@ -917,6 +956,7 @@ aa_count = {"TTT": [0], "CTT": [0], "ATT": [0], "GTT": [0],
             "---": [0]
             }
 aa_most_frequent = {}
+spike_dic = {}
 amino_acid_list = ['ATA', 'ATC', 'ATT', 'ATG',
                    'ACA', 'ACC', 'ACG', 'ACT',
                    'AAC', 'AAT', 'AAA', 'AAG',
