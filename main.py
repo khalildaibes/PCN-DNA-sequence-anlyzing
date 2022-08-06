@@ -101,7 +101,7 @@ def select_query(db, id, cdr_length=14):
             db, db, db, id, cdr_length)
     # ALL SUBJECTS AND SPECIFIC CDR LENGTHS
     elif id == "all" and cdr_length != "not specific":
-        cmd = "select seq.*, coll.*,sammet.* from {}.sequences as seq inner join {}.sequence_collapse as coll on seq.ai=coll.seq_ai inner join {}.sample_metadata as sammet on sammet.sample_id=seq.sample_id WHERE seq.functional=1 AND coll.instances_in_subject !=0 AND coll.copy_number_in_subject > 1  AND seq.deletions is null AND  seq.insertions is null AND LENGTH(seq.cdr3_aa)={} ORDER BY RAND() AND(sammet.value like'%spike+%' OR sammet.value like'%spike-%') ORDER BY RAND()".format(
+        cmd = "select seq.*, coll.*,sammet.* from {}.sequences as seq inner join {}.sequence_collapse as coll on seq.ai=coll.seq_ai inner join {}.sample_metadata as sammet on sammet.sample_id=seq.sample_id WHERE seq.functional=1 AND coll.instances_in_subject !=0 AND coll.copy_number_in_subject > 1  AND seq.deletions is null AND  seq.insertions is null AND LENGTH(seq.cdr3_aa)={} AND(sammet.value like'%spike+%' OR sammet.value like'%spike-%') ORDER BY RAND()".format(
             db, db, db, cdr_length)
     # SPECIFIC SUBJECTS AND ALL CDR LENGTHS
     elif id != "all" and cdr_length == "not specific":
@@ -473,6 +473,8 @@ def get_spike_for_kmer(key):
     if float(appearances_count[0] + appearances_count[1]) * 0.9 <= float(appearances_count[0]):
         return int(1)
     elif float(appearances_count[0] + appearances_count[1]) * 0.9 <= float(appearances_count[1]):
+        return int(-1)
+    else:
         return int(0)
 
 
@@ -664,9 +666,9 @@ def draw_graph3(networkx_graph, notebook=True, output_filename='empgraph.html', 
     #######################################
     extra_html += "Network density:" + str(nx.density(networkx_graph)) + "\n"
     extra_html += ""
-    # plt.plot(list(nuclotide_count_dict.keys()), [nuclotide_count_dict.get(x)[0] for x in nuclotide_count_dict.keys()])
-    # plt.savefig("tempfig.png")
-    # plt.show()
+    plt.plot(list(nuclotide_count_dict.keys()), [nuclotide_count_dict.get(x)[0] for x in nuclotide_count_dict.keys()])
+    plt.savefig("tempfig.png")
+    plt.show()
 
     extra_html += '''
             </div>
