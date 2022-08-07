@@ -71,7 +71,7 @@ def create_files(DB, ID, cdr_length, selected_analyzed_position, startposition, 
 
 
 # A CLASS TO HOLD THE NUCLEOTIDES NODES DATA AND METADATA
-class NucleotidesNetNodes:
+class NetworkNode:
     def __init__(self, sub_seq=None, sequence=None, subject=None, seq_id=None, position=None):
         self.sub_seq = sub_seq
         self.sequence = sequence
@@ -251,7 +251,7 @@ def replace_nucleotide(DB, ID, selected_analyzed_position, startposition, endpos
                             a_seq_id = line["seq_id"]
                             # protein a node
 
-                            a_node = NucleotidesNetNodes(tripleAA, a_sequence, a_subject, a_seq_id, i)
+                            a_node = NetworkNode(tripleAA, a_sequence, a_subject, a_seq_id, i)
                             old_list = amino_acids_kmers_nets_G.get(i, None)
                             if old_list:
                                 old_list.append(a_node)
@@ -267,7 +267,7 @@ def replace_nucleotide(DB, ID, selected_analyzed_position, startposition, endpos
                         a_position = i
                         a_seq_id = line["seq_id"]
                         # protein a node
-                        a_node = NucleotidesNetNodes(nuclotides_sub_seq, a_sequence, a_subject, a_seq_id, a_position)
+                        a_node = NetworkNode(nuclotides_sub_seq, a_sequence, a_subject, a_seq_id, a_position)
                         aa_count[dna[i:i + 3]][0] += 1
                         aa_count[dna[i:i + 3]].append(a_node)
                         old_list = replaced_nucoltides_kmers_nets.get(i, [])
@@ -432,7 +432,7 @@ def startf(DB, ID, selected_analyzed_position, startposition, endposition, rows,
                             a_seq_id = line['seq_id']
                             # protein a node
 
-                            a_node = NucleotidesNetNodes(tripleAA, a_sequence, a_subject, a_seq_id, i)
+                            a_node = NetworkNode(tripleAA, a_sequence, a_subject, a_seq_id, i)
                             old_list = amino_acids_kmers_nets_G.get(i, None)
                             if old_list:
                                 old_list.append(a_node)
@@ -448,7 +448,7 @@ def startf(DB, ID, selected_analyzed_position, startposition, endposition, rows,
                         a_position = i
                         a_seq_id = line['seq_id']
                         # protein a node
-                        a_node = NucleotidesNetNodes(nuclotides_sub_seq, a_sequence, a_subject, a_seq_id, a_position)
+                        a_node = NetworkNode(nuclotides_sub_seq, a_sequence, a_subject, a_seq_id, a_position)
                         aa_count[dna[i:i + 3]][0] += 1
                         aa_count[dna[i:i + 3]].append(a_node)
                         old_list = nucoltides_kmers_nets.get(i, [])
