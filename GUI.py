@@ -1,7 +1,9 @@
 from tkinter import *
 #  THIS IS AN IMPORT TO IMPORT THE MAIN MODULE WHICH IS IMPORTANT TO HANDLE THE GUI
-import main
+from main import *
 # DEFINING GLOBAL VARIABLES THAT WILL HOLD THE DATA FOR THE ANALYZING PROGRESS
+import os
+import pandas as pd
 
 global fetched_flag
 fetched_flag = False
@@ -43,11 +45,10 @@ def set_row_count(rows):
 #####################################################################################################################
 def start_fetching_data():
     # main.select_query(user.database, user.subject,user.cdr_length)
-    main.startf(user.database, user.subject, user.selected_analyzed_position, user.startposition,
+    startf(user.database, user.subject, user.selected_analyzed_position, user.startposition,
                 user.endposition, user.rows, user.cdr_length)
     fetched_flag = True
-
-#####################################################################################################################
+    saif_and_bashara_code()
 # @DESCRIPTION : THE REGISTER WINDOWS
 # @INPUT : ---- MAIN SCREEN IN THE WINDOWS FOR THE STARTING OF THE APPLICATION
 # @OUTPUT : ---
@@ -298,7 +299,7 @@ def choose_database(main_screen):
 # @OUTPUT : ---
 #####################################################################################################################
 def export_preproccessed_data():
-    main.export_preproccessed_data()
+    export_preproccessed_data()
 
 #####################################################################################################################
 # @DESCRIPTION : THIS METHOD INVOKE THE IMPORT METHOD
@@ -306,7 +307,7 @@ def export_preproccessed_data():
 # @OUTPUT : ---
 #####################################################################################################################
 def import_preproccessed_data():
-    main.import_preproccessed_data()
+    import_preproccessed_data()
 
 #####################################################################################################################
 # @DESCRIPTION : ASSIGN TO THE USER METADATA THE REQUESTED SUBJECT WINDOW
@@ -438,7 +439,7 @@ def fetch_data(choose_subject_screen):
 #####################################################################################################################
 def build_aa_netwrok():
     try:
-        main.create_amino_acid_netwrok()
+        create_amino_acid_netwrok()
     except Exception as ex:
         print("ops" + ex)
 
@@ -448,7 +449,7 @@ def build_aa_netwrok():
 # @OUTPUT : ---
 #####################################################################################################################
 def build_nucleotides_network():
-    main.create_nuclotides_netwrok()
+    create_nuclotides_netwrok()
 
 #####################################################################################################################
 # @DESCRIPTION : ASSIGN TO THE USER METADATA THE REQUESTED SUBJECT WINDOW
@@ -456,9 +457,9 @@ def build_nucleotides_network():
 # @OUTPUT : ---
 #####################################################################################################################
 def build_replaced_nucleotides_network():
-    main.replace_nucleotide(user.database, user.subject,  user.selected_analyzed_position,
+    replace_nucleotide(user.database, user.subject,  user.selected_analyzed_position,
                             user.startposition, user.endposition, user.rows, user.cdr_length)
-    main.create_replaced_nuclotides_netwrok()
+    create_replaced_nuclotides_netwrok()
 
 #####################################################################################################################
 # @DESCRIPTION : ASSIGN TO THE USER METADATA THE REQUESTED SUBJECT WINDOW
@@ -466,7 +467,7 @@ def build_replaced_nucleotides_network():
 # @OUTPUT : ---
 #####################################################################################################################
 def show_netwrpk_analyzing_process_results():
-    main.show_Nuclotides_netwrok_stats(main.nucoltides_kmers_nets)
+    show_Nuclotides_netwrok_stats(nucoltides_kmers_nets)
 
 #####################################################################################################################
 # @DESCRIPTION : ASSIGN TO THE USER METADATA THE REQUESTED SUBJECT WINDOW

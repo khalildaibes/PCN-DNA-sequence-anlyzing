@@ -51,6 +51,14 @@ def create_files(DB, ID, cdr_length, selected_analyzed_position, startposition, 
         toFile2 = "{}\{}emp_id{}_seqK.csv".format(str(os.getcwd() + "\\" + directory), DB, ID)
         global u_path
         u_path = "{}\{}_id{}_uniqeKmers.csv".format(str(os.getcwd() + "\\" + directory), DB, ID)
+        global remainV
+        remainV = "{}\{}_id{}_VarRemain.csv".format(str(os.getcwd() + "\\" + directory), DB, ID)
+        global firstClusterPath
+        firstClusterPath = '{}\{}_id{}_clusters1.csv'.format(str(os.getcwd() + "\\" + directory), DB, ID)
+        global secondClusteringPath
+        secondClusteringPath = '{}\{}_id{}_clusters2.csv'.format(str(os.getcwd() + "\\" + directory), DB, ID)
+        global lastStep
+        lastStep = "{}\{}_id{}_final.csv".format(str(os.getcwd() + "\\" + directory), DB, ID)
         global Amino_acid
         Amino_acid = "{}\Amino_acid".format(str(os.getcwd() + "\\" + directory))
         isdir = os.path.isdir(Amino_acid)
@@ -344,8 +352,8 @@ def startf(DB, ID, selected_analyzed_position, startposition, endposition, rows,
     with open(toFile, 'w', newline='') as new_file:
         csv_writer = csv.writer(new_file)
         csv_writer.writerow(
-            ['seq_id', 'sequence', 'TranslatedSeq', 'ai', 'subject_id', 'clone_id', 'sample_id',
-             'cdr3_aa'])
+            ['seq_id', 'sequence', 'TranslatedSeq', 'TranslatedGermline', 'ai', 'subject_id', 'clone_id', 'sample_id',
+             'cdr3_aa', 'spike'])
         for line in tqdm(seq):
             dna = ""
             germ = ""
@@ -458,15 +466,228 @@ def startf(DB, ID, selected_analyzed_position, startposition, endposition, rows,
                 j = j + 3
 
                 temp_pos = temp_pos + 9
-
+            germProtein_sequence = ""
+            for i in range(0, len(germ) - (len(germ) % 3), 3):
+                if germ[i] == "N" and germ[i + 1] == "N" and germ[i + 2] == "N":
+                    germProtein_sequence += "x"
+                elif germ[i] == "N" or germ[i + 1] == "N" or germ[i + 2] == "N" and germ[i] != "-" and germ[
+                    i + 1] != "-" and germ[i + 2] != "-":
+                    germProtein_sequence += "x"
+                elif germ[i] == "-" and germ[i + 1] == "-" and germ[i + 2] == "-":
+                    germProtein_sequence += protein[germ[i:i + 3]]
+                elif germ[i] == "-" or germ[i + 1] == "-" or germ[i + 2] == "-":
+                    i = i + 0;
+                else:
+                    germProtein_sequence += protein[germ[i:i + 3]]
             csv_writer.writerow(
-                [seqID, dna, protein_sequence, ai, subjectID, cloneID, sampleID, cdr3_seq, spike])
+                [seqID, dna, protein_sequence, germProtein_sequence, ai, subjectID, cloneID, sampleID, cdr3_seq, spike])
             print("Translating DONE!")
             save_fasta.write(dna)
             count += 1
             save_fasta.write("\n>seq" + str(count) + "\n")
         save_fasta.close()
 
+        # Matrix for the mutations
+        def build_matrix(rows, cols):
+            matrix = []
+            for r in range(0, rows):
+                matrix.append([0 for c in range(0, cols)])
+            return matrix
+
+        # Mutation function
+        def mutatedFunc(seqAA, germAA):
+            global flag
+            flag = 0
+            vec = build_matrix(2, len(seqAA))
+            if len(seqAA) != len(germAA):
+                csv_writer1.writerow([seqAA, germAA])
+                flag = 1
+            else:
+                for i in range(0, len(seqAA), 1):
+                    vec[0][i] = i + 1
+                    # print(seqAA[i],germAA[i])
+                    if seqAA[i] != germAA[i] and seqAA[i] != "x" and seqAA[i] != "-" and germAA[i] != "x" and germAA[
+                        i] != "-" and seqAA[i] != "*" and germAA[i] != "*":
+                        vec[1][i] = 1
+            return vec
+
+        print("AAsequence-mutations starts ....")
+        with open(toFile, 'r') as csv_file:
+            csv_reader = csv.DictReader(csv_file)
+            with open(toFile1, 'w', newline='') as new_file, open(removed, 'w', newline='') as nfile:
+                csv_writer = csv.writer(new_file)
+                csv_writer.writerow(
+                    ['ai', 'sequence', 'seq_id', 'translatedSeq', 'translatedGerm', 'vector', 'subject_id', 'clone_id',
+                     'sample_id'])
+                csv_writer1 = csv.writer(nfile)
+                csv_writer1.writerow(['translatedSeq', 'translatedGerm'])
+                for line in (csv_reader):
+                    seq = (line['sequence'])
+                    seqID = (line['seq_id'])
+                    ai = (line['ai'])
+                    seqAA = (line['TranslatedSeq'])
+                    germAA = (line['TranslatedGermline'])
+                    cloneID = (line['clone_id'])
+                    sampleID = (line['sample_id'])
+                    subjectID = (line['subject_id'])
+                    vec1 = mutatedFunc(seqAA, germAA)
+                    vector = []
+                    if flag != 1:
+                        for i in range(len(vec1[0])):
+                            if vec1[1][i] == 1:
+                                vector.append(i + 1)
+                        csv_writer.writerow([ai, seq, seqID, seqAA, germAA, vector, subjectID, cloneID, sampleID])
+            print("AAsequence-mutations DONE!")
+
+        def kmersFunc(AA, k):
+            global start
+            start = 0
+            p = 0
+            kmer = ""
+            x = 1
+            s = 1
+            while (x != 20):
+                if AA[-s] != "-":
+                    x += 1
+                    s += 1
+                else:
+                    s += 1
+
+            for i in range(0, len(AA), 1):
+                if AA[i] == "x" or AA[i] == "-":
+                    i += 0
+                    start += 1
+                else:
+                    p1 = i
+                    for q in range(i, (len(AA) - s) + 1, 1):
+                        for j in range(q, len(AA), 1):
+                            if AA[j] == "-" and kmer == "":
+                                j = q + 1
+                                p1 = j
+                                break
+                            if AA[j] == "-":
+                                j += 0
+                            else:
+                                p += 1
+                                kmer += AA[j]
+                                if p == k:
+                                    p = 0
+                                    p2 = j
+                                    pos = (p1 + 1, p2 + 1)
+                                    # print(AA[p1:p2+1])
+                                    # print(kmer)
+                                    csv_writer1.writerow([kmer, pos, seqID, ai, subjectID, cloneID, sampleID])
+                                    j = q + 1
+                                    p1 = j
+                                    kmer = ""
+                                    break
+                    break
+
+        i = 0
+        print("Kmers extraction starts ....")
+        with open(toFile1, 'r') as csv_file:
+            csv_reader = csv.DictReader(csv_file)
+            with open(toFile2, 'w', newline='') as new_file1:
+                csv_writer1 = csv.writer(new_file1)
+                csv_writer1.writerow(['k-mer', 'position', 'seq_id', 'ai', 'subject_id', 'clone_id', 'sample_id'])
+                for line in csv_reader:
+                    KmerS = (line['translatedSeq'])
+                    seqID = (line['seq_id'])
+                    ai = (line['ai'])
+                    cloneID = (line['clone_id'])
+                    sampleID = (line['sample_id'])
+                    subjectID = (line['subject_id'])
+                    # Function for the k-mers!
+                    kmersFunc(KmerS, 20)
+                print("Kmers extraction DONE!")
+        print("First step Ends\n")
+
+
+
+def saif_and_bashara_code():
+    col_list = ["k-mer", "ai", "clone_id"]
+    kmerss = pd.read_csv(toFile2, usecols=col_list)
+
+    uniqueK(kmerss, u_path)
+ ################################################################
+    col_list = ["kmer", "id"]
+    col_list1 = ["kmer"]
+    kmers0 = pd.read_csv(u_path, usecols=col_list)
+    kmers1 = pd.read_csv(u_path, usecols=col_list1)
+    var(kmers0, kmers1, remainV)
+    ######################################################################
+    kmers = pd.read_csv(remainV)
+    print(len(kmers))
+    firstG(kmers, firstClusterPath)
+
+    ######################################################################
+    # Second Step Clusters
+    dff = pd.read_csv(firstClusterPath)
+    secondG(dff, secondClusteringPath)
+    ######################################################################
+    # prefinal
+    ref1 = pd.read_csv(toFile2)
+    ref1.rename(columns={'k-mer': 'kmer'}, inplace=True)
+    ref2 = pd.read_csv(firstClusterPath)
+    df = pd.read_csv(secondClusteringPath)
+    linkdata(df, ref1, ref2, lastStep)
+
+#####################################################################################################################
+
+tqdm.pandas()
+from collections import Counter
+
+
+# ID=10
+# path=r"/home/saif/metadata/covid/covid{}_seqK.csv".format(ID)
+# name="/home/saif/zak/cov1/cov{}_byScore.csv".format(ID)
+# col_list = ["k-mer","ai","clone_id"]
+# kmerss=pd.read_csv(path,usecols=col_list)
+
+def uniqueK(kmers, name):
+    print("Second step (extract the unique k-mers):\n")
+
+    # print("unique starts here")
+    kmers = kmers.rename(columns={'Unique-SeqKmer': 'Kmers'}, inplace=False)
+    kmers = kmers.rename(columns={'k-mer': 'Kmers'}, inplace=False)
+
+    print("number of k-mers before:" + str(len(kmers)))
+    kmers['id'] = kmers.index
+
+    l = kmers.values.tolist()
+
+    d = {}
+    for i in tqdm(l):
+        d[i[0]] = []
+    for j in tqdm(l):
+        if (j[3] not in d[j[0]]):
+            d[j[0]].append(j[3])
+
+    new_df = pd.DataFrame(kmers['Kmers'])
+    l = new_df.values.tolist()
+    flat_list = []
+    for sublist in l:
+        for item in sublist:
+            flat_list.append(item)
+    l = flat_list
+
+    def count_uniqe(lst):
+        new_vals = Counter(l).most_common()
+        new_vals = new_vals[::1]  # this sorts the list in scending order
+        return new_vals
+
+    new_list = count_uniqe(l)
+
+    df = pd.DataFrame(new_list, columns=['kmer', 'score'])
+
+    print("number of unique k-mers: " + str(len(df)))
+
+    def inx(kmer):
+        return d[kmer][0]
+
+    df['id'] = df.kmer.apply(inx)
+    df.to_csv(name, index=False)
+    print("Second step Ends\n")
 
 def get_spike_for_kmer(key):
     appearances_count = spike_dic.get(key)
@@ -921,6 +1142,362 @@ def make_netwrok_labels(networkx_graph, key):
     os.chdir(Amino_acid)
     nx.write_pajek(G_labels, str(key) + '_labels_output1.net')
     os.chdir('..')
+
+
+
+
+def diff_letters(a, b):
+    cnt = 0
+    for i in range(len(a)):
+        if a[i] != b[i] and a[i] != 'x' and b[i] != 'x':
+            cnt += 1
+            if cnt > 1:
+                break
+    return cnt
+
+
+def fiten(row):
+    row = row[:10]
+    return row
+
+
+def laten(row):
+    row = row[10:]
+    return row
+
+
+def wrap_f(x):
+    return fiten(x['kmer'])
+
+
+def wrap_l(x):
+    return laten(x['kmer'])
+
+
+def var(kmers0, kmers1, name):
+    print("Third step (1-mismatch combined k-mers):\n")
+    kmers = kmers1.copy()
+    kmers1['tmpid'] = kmers1.index
+    kmers1['var'] = 0
+
+    print("number of k-mers before combination: " + str(len(kmers0)))
+
+    kmers1['id'] = kmers0['id']
+
+    selected_columns = kmers1[["tmpid", "var"]]
+    new_df = selected_columns.copy()
+
+    all_list = new_df.values.tolist()
+    All = {}
+    st = {}
+    for l in tqdm(all_list):
+        All[l[0]] = l[1]
+        st[l[0]] = l[1]
+    print(kmers)
+    kmers['first'] = kmers.progress_apply((lambda r: fiten(r['kmer'])), axis=1)
+    kmers['last'] = kmers.progress_apply((lambda r: laten(r['kmer'])), axis=1)
+    kmers['kmer'] = kmers.index
+
+    lastlist = kmers.values.tolist()
+    removed = {}
+    for i in tqdm(lastlist):
+        removed[i[0]] = []
+    last = {}
+    for l in tqdm(lastlist):
+        last[l[0]] = l[2]
+    first = {}
+    for l in tqdm(lastlist):
+        first[l[0]] = l[1]
+    firstd = {}
+    for i in tqdm(lastlist):
+        firstd[i[1]] = []
+    for j in tqdm(lastlist):
+        firstd[j[1]].append(j[0])
+    lastd = {}
+    for i in tqdm(lastlist):
+        lastd[i[2]] = []
+    for j in tqdm(lastlist):
+        lastd[j[2]].append(j[0])
+
+    def mapf():
+        r = []
+        for l in tqdm(firstd.values()):
+            if len(l) > 1:
+                for i in range(len(l)):
+                    if st[l[i]] != 0:
+                        continue
+                    for j in range(i + 1, len(l)):
+                        if st[l[j]] == 0:
+                            if diff_letters(last[l[i]], last[l[j]]) <= 1:
+                                All[l[i]] += 1
+                                st[l[j]] += 1
+                                removed[l[i]].append(l[j])
+                                r.append(l[j])
+
+        # second comparision
+        for e in tqdm(lastd.values()):
+            if len(e) > 1:
+                for x in range(len(e)):
+                    if st[e[x]] != 0:
+                        continue
+                    for y in range(x + 1, len(e)):
+                        if st[e[y]] == 0:
+                            if diff_letters(first[e[x]], first[e[y]]) <= 1:
+                                All[e[x]] += 1
+                                st[e[y]] += 1
+                                removed[e[x]].append(e[y])
+                                r.append(e[y])
+        return r
+
+    trash = mapf()
+    ss = list(set(trash))
+    print("\nnumber of kmers to be deleted: {0:d}".format(len(ss)))
+
+    var = pd.DataFrame.from_dict(All, orient='index', columns=['variance'])
+    final = kmers1.drop(columns=['tmpid'])
+    final['var'] = var['variance']
+    final = final.sort_values(by=['var'], ascending=False)
+    final = final.drop(trash)
+    print("Third step Ends\n")
+    final.to_csv(name, index=False)
+    print("\nthe final number of kmers: {0:d}".format(len(final)))
+
+
+
+def firstG(kmers, name):
+    print("first clustering starts...")
+    selected_columns = kmers[["kmer"]]
+    df = selected_columns.copy()
+
+    ## functions
+    def fitri(row):
+        row = row[:3]
+        return row
+
+    def latri(row):
+        row = row[17:]
+        return row
+
+    def betw(row):
+        row = row[3:17]
+        return row
+
+    def wrap_f(x):
+        return fitri(x['kmer'])
+
+    def wrap_l(x):
+        return latri(x['kmer'])
+
+    def wrap_b(x):
+        return betw(x['kmer'])
+
+    def diff_letters(a, b):
+        cnt = 0
+        for i in range(len(a)):
+            if a[i] == b[i] and a[i] != 'x' and b[i] != 'x':
+                cnt += 1
+                if cnt > 4:
+                    return 1
+        return 0
+
+    df['first'] = df.progress_apply(wrap_f, axis=1)
+    df['last'] = df.progress_apply(wrap_l, axis=1)
+    df['k'] = df.index
+    df['kmers'] = df.progress_apply(wrap_b, axis=1)
+    df['id'] = kmers['id'].copy()
+
+    lastlist = df.values.tolist()
+    ids = {}
+    for l in tqdm(lastlist):
+        ids[l[3]] = l[5]
+
+    st = {}
+    for l in tqdm(lastlist):
+        st[l[3]] = 0
+
+    km = {}
+    for l in tqdm(lastlist):
+        km[l[3]] = l[0]
+
+    k = {}
+    for l in tqdm(lastlist):
+        k[l[3]] = l[4]
+
+    last = {}
+    for l in tqdm(lastlist):
+        last[l[3]] = l[2]
+
+    first = {}
+    for l in tqdm(lastlist):
+        first[l[3]] = l[1]
+
+    firstd = {}
+    for i in tqdm(lastlist):
+        firstd[i[1]] = []
+
+    for j in tqdm(lastlist):
+        firstd[j[1]].append(j[3])
+
+    lastd = {}
+    for i in tqdm(lastlist):
+        lastd[i[2]] = []
+
+    for j in tqdm(lastlist):
+        lastd[j[2]].append(j[3])
+
+    cl = -1
+    data = []
+    for l in tqdm(firstd.values()):
+        for i in range(len(l)):
+            if st[l[i]] != 0:
+                continue
+            cl += 1
+            data.append([km[l[i]], cl, ids[l[i]]])
+            for j in range(i + 1, len(l)):
+                if last[l[i]] == last[l[j]]:
+                    if diff_letters(k[l[i]], k[l[j]]) == 1:
+                        st[l[j]] += 1
+                        data.append([km[l[j]], cl, ids[l[j]]])
+                    else:
+                        st[l[j]] += 1
+                        data.append([km[l[j]], -1, ids[l[j]]])
+
+    dff = pd.DataFrame(data, columns=['kmer', 'ClusterID', 'id'])
+
+    dff = dff[dff['ClusterID'] != -1]
+    dff = dff.reset_index(drop=True)
+
+    print("number of kmers after first clusterng: " + str(len(dff)))
+    print(dff.head())
+    dff.to_csv(name, index=False)
+
+
+
+
+def secondG(dff, name):
+    print("second clustering starts...")
+    maxx = dff.ClusterID.max()
+
+    def prkmer(list1, j):
+        AA = {'A': 0, 'R': 0, 'N': 0, 'D': 0, 'C': 0, 'Q': 0, 'E': 0, 'G': 0, 'H': 0, 'I': 0, 'L': 0, 'K': 0, 'M': 0,
+              'F': 0, 'P': 0, 'S': 0, 's': 0, 'T': 0, 'W': 0, 'Y': 0, 'V': 0}
+        new = ''
+        for i in range(20):
+            for k in list1:
+                if k[i] != 'x':
+                    AA[k[i]] += 1
+            new += max(AA.items(), key=operator.itemgetter(1))[0]
+            AA = dict.fromkeys(AA, 0)
+        new += ':'
+        new += str(j)
+        return new
+
+    lol = [dff[dff['ClusterID'] == i].kmer.tolist() for i in tqdm(range(maxx + 1))]
+    newl = [[prkmer(lol[i], i), i] for i in tqdm(range(len(lol)))]
+
+    newdf = pd.DataFrame(newl, columns=['kmer', 'id'])
+    klis = newdf.kmer.tolist()
+    klis = list(set(klis))
+    st1 = {}
+    for l in tqdm(klis):
+        st1[l] = 0
+
+    def hamming(a, b):
+        cnt = 0
+        for i in range(20):
+            if a[i] == b[i] and a[i] != 'x' and b[i] != 'x':
+                cnt += 1
+                if cnt > 10:
+                    return 1
+        return 0
+
+    cl = -1
+    data = []
+    for i in tqdm(range(len(klis))):
+        if st1[klis[i]] != 0:
+            continue
+        cl += 1
+        data.append([klis[i], cl])
+        for j in range(i + 1, len(klis)):
+            if st1[klis[j]] == 0:
+                if hamming(klis[i], klis[j]) == 1:
+                    st1[klis[j]] += 1
+                    data.append([klis[j], cl])
+
+    dat = pd.DataFrame(data, columns=['kmer', 'clusterid'])
+    print(dat.head())
+
+    dat.to_csv(name, index=False)
+
+
+
+
+def indx(row):
+    row = row[21:]
+    return row
+
+
+def wrap_indx(x):
+    return indx(x['kmer'])
+
+
+def linkdata(df, ref1, ref2, name):
+    print("start linking data...")
+    selected_columns = df[["kmer"]]
+    df1 = selected_columns.copy()
+    df['kmerid'] = df1.progress_apply(wrap_indx, axis=1)
+
+    maxx = df.clusterid.max()
+
+    bigc = []
+    for i in tqdm(range(maxx + 1)):
+        newl = []
+        flat_list = []
+        d = df[df['clusterid'] == i]
+        blist = d.kmerid.tolist()
+        for i in blist:
+            a = ref2.loc[ref2['ClusterID'] == int(i)]
+            a = a.id.tolist()
+            newl.append(a)
+        flat_list = [item for sublist in newl for item in sublist]
+        bigc.append(flat_list)
+
+    big = pd.DataFrame()
+    for i in tqdm(range(len(bigc))):
+        aa = ref1.iloc[bigc[i]]
+        l = aa.kmer.tolist()
+        aa.insert(7, 'cluster', str(i))
+        aa = aa.reset_index(drop=True)
+        big = pd.concat([big, aa.copy()])
+
+    x = big.cluster.value_counts()
+    x = x.sort_index()
+    p = pd.DataFrame(x)
+    p = p.reset_index()
+    p = p.rename(columns={'index': 'clnum', 'cluster': 'count'}, inplace=False)
+    lastlist = p.values.tolist()
+    num = {}
+    for l in tqdm(lastlist):
+        num[l[0]] = l[1]
+
+    def nums(x):
+        return num[x]
+
+    def pos(x):
+        x = x[1:4]
+        if x[2] == ',':
+            return int(x[:2])
+        else:
+            return int(x)
+
+    big['cnt'] = big.apply(lambda row: nums(row['cluster']), axis=1)
+    big['pos'] = big.apply(lambda row: pos(row['position']), axis=1)
+    print("number of final kmers:" + str(len(big)))
+    print(big.head())
+    big.to_csv(name, index=False)
+
+
+
 
 
 global kmers_nets

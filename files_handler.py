@@ -16,6 +16,10 @@ global pajek
 global aa_count
 global nucoltides_kmers_nets
 global directory
+global remainV
+global firstClusterPath
+global secondClusteringPath
+global lastStep
 def create_files(DB, ID, cdr_length, selected_analyzed_position, startposition, endposition, rows):
     # CREATING THE DIRECTORY
 
@@ -40,7 +44,16 @@ def create_files(DB, ID, cdr_length, selected_analyzed_position, startposition, 
 
         u_path = "{}\{}_id{}_uniqeKmers.csv".format(str(os.getcwd() + "\\" + directory), DB, ID)
 
+        remainV = "{}\{}_id{}_VarRemain.csv".format(str(os.getcwd() + "\\" + directory), DB, ID)
+
+        firstClusterPath = '{}\{}_id{}_clusters1.csv'.format(str(os.getcwd() + "\\" + directory), DB, ID)
+
+        secondClusteringPath = '{}\{}_id{}_clusters2.csv'.format(str(os.getcwd() + "\\" + directory), DB, ID)
+
+        lastStep = "{}\{}_id{}_final.csv".format(str(os.getcwd() + "\\" + directory), DB, ID)
+
         Amino_acid = "{}\Amino_acid".format(str(os.getcwd() + "\\" + directory))
+
         isdir = os.path.isdir(Amino_acid)
         if not isdir:
             os.makedirs(Amino_acid)
