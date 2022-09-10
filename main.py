@@ -14,7 +14,8 @@ from tqdm import tqdm
 import networkx as nx
 # A LIBRARY TO WORK WITH DATABASE AND CONNECT TO THE CONNECTION MODULE
 import db_connection as db_connection
-# A LIBRARY TO WORK VIEW PROGRESS IN CONSOLE WINDOW
+# A LIBRAR0Y2 |TO WORK VIEW PROGRESS IN CONSOLE WINDOW
+#
 import pickle
 # A LIBRARY TO WORK WITH THREADS AND PROCESS
 from threading import Thread
@@ -79,7 +80,7 @@ def create_files(DB, ID, cdr_length, selected_analyzed_position, startposition, 
 
 
 # A CLASS TO HOLD THE NUCLEOTIDES NODES DATA AND METADATA
-class NucleotidesNetNodes:
+class NetworkNode:
     def __init__(self, sub_seq=None, sequence=None, subject=None, seq_id=None, position=None):
         self.sub_seq = sub_seq
         self.sequence = sequence
@@ -109,7 +110,7 @@ def select_query(db, id, cdr_length=14):
             db, db, db, id, cdr_length)
     # ALL SUBJECTS AND SPECIFIC CDR LENGTHS
     elif id == "all" and cdr_length != "not specific":
-        cmd = "select seq.*, coll.*,sammet.* from {}.sequences as seq inner join {}.sequence_collapse as coll on seq.ai=coll.seq_ai inner join {}.sample_metadata as sammet on sammet.sample_id=seq.sample_id WHERE seq.functional=1 AND coll.instances_in_subject !=0 AND coll.copy_number_in_subject > 1  AND seq.deletions is null AND  seq.insertions is null AND LENGTH(seq.cdr3_aa)={} ORDER BY RAND() AND(sammet.value like'%spike+%' OR sammet.value like'%spike-%') ORDER BY RAND()".format(
+        cmd = "select seq.*, coll.*,sammet.* from {}.sequences as seq inner join {}.sequence_collapse as coll on seq.ai=coll.seq_ai inner join {}.sample_metadata as sammet on sammet.sample_id=seq.sample_id WHERE seq.functional=1 AND coll.instances_in_subject !=0 AND coll.copy_number_in_subject > 1  AND seq.deletions is null AND  seq.insertions is null AND LENGTH(seq.cdr3_aa)={} AND(sammet.value like'%spike+%' OR sammet.value like'%spike-%') ORDER BY RAND()".format(
             db, db, db, cdr_length)
     # SPECIFIC SUBJECTS AND ALL CDR LENGTHS
     elif id != "all" and cdr_length == "not specific":
@@ -259,7 +260,7 @@ def replace_nucleotide(DB, ID, selected_analyzed_position, startposition, endpos
                             a_seq_id = line["seq_id"]
                             # protein a node
 
-                            a_node = NucleotidesNetNodes(tripleAA, a_sequence, a_subject, a_seq_id, i)
+                            a_node = NetworkNode(tripleAA, a_sequence, a_subject, a_seq_id, i)
                             old_list = amino_acids_kmers_nets_G.get(i, None)
                             if old_list:
                                 old_list.append(a_node)
@@ -275,7 +276,7 @@ def replace_nucleotide(DB, ID, selected_analyzed_position, startposition, endpos
                         a_position = i
                         a_seq_id = line["seq_id"]
                         # protein a node
-                        a_node = NucleotidesNetNodes(nuclotides_sub_seq, a_sequence, a_subject, a_seq_id, a_position)
+                        a_node = NetworkNode(nuclotides_sub_seq, a_sequence, a_subject, a_seq_id, a_position)
                         aa_count[dna[i:i + 3]][0] += 1
                         aa_count[dna[i:i + 3]].append(a_node)
                         old_list = replaced_nucoltides_kmers_nets.get(i, [])
@@ -423,7 +424,7 @@ def startf(DB, ID, selected_analyzed_position, startposition, endposition, rows,
 
                     if triple == 3:
                         if tripleAA not in spike_dic.keys():
-                            spkie_count = [0, 0]
+                            spkie_count = [0, 0, 0]
                             spike_dic[tripleAA] = spkie_count
                         if "spike+" in str(spike):
                             x = spike_dic.get(tripleAA)
@@ -433,6 +434,10 @@ def startf(DB, ID, selected_analyzed_position, startposition, endposition, rows,
                             x = spike_dic.get(tripleAA)
                             x[1] += 1
                             spike_dic[tripleAA] = x
+                        else:
+                            x = spike_dic.get(tripleAA)
+                            x[2] += 1
+                            spike_dic[tripleAA] = x
 
                         if protein[dna[i:i + 3]] != "-" and protein[dna[i:i + 3]] != "*":
                             a_sequence = line['sequence']  # protein a node
@@ -440,7 +445,7 @@ def startf(DB, ID, selected_analyzed_position, startposition, endposition, rows,
                             a_seq_id = line['seq_id']
                             # protein a node
 
-                            a_node = NucleotidesNetNodes(tripleAA, a_sequence, a_subject, a_seq_id, i)
+                            a_node = NetworkNode(tripleAA, a_sequence, a_subject, a_seq_id, i)
                             old_list = amino_acids_kmers_nets_G.get(i, None)
                             if old_list:
                                 old_list.append(a_node)
@@ -456,7 +461,7 @@ def startf(DB, ID, selected_analyzed_position, startposition, endposition, rows,
                         a_position = i
                         a_seq_id = line['seq_id']
                         # protein a node
-                        a_node = NucleotidesNetNodes(nuclotides_sub_seq, a_sequence, a_subject, a_seq_id, a_position)
+                        a_node = NetworkNode(nuclotides_sub_seq, a_sequence, a_subject, a_seq_id, a_position)
                         aa_count[dna[i:i + 3]][0] += 1
                         aa_count[dna[i:i + 3]].append(a_node)
                         old_list = nucoltides_kmers_nets.get(i, [])
@@ -694,6 +699,8 @@ def get_spike_for_kmer(key):
     if float(appearances_count[0] + appearances_count[1]) * 0.9 <= float(appearances_count[0]):
         return int(1)
     elif float(appearances_count[0] + appearances_count[1]) * 0.9 <= float(appearances_count[1]):
+        return int(-1)
+    else:
         return int(0)
 
 
@@ -714,18 +721,54 @@ def plot_spikes(figure_directory):
     data["X"] = list(spike_dic.keys())
     tmplst = []
     for x in spike_dic.keys():
-        tmplst.append(get_spike_for_kmer(x))
+        spike_value = get_spike_for_kmer(x)
+        tmplst.append(spike_value)
         spike_plus_sum += get_spike_plus_sum(x)
         spike_minus_sum += get_spike_minus_sum(x)
+        if spike_value == 1:
+            appearances_count = spike_dic.get(x)
+            if appearances_count[0] > 0:
+                with open("spike+", 'a+', newline='') as new_file:
+                    csv_writer = csv.writer(new_file)
+                    csv_writer.writerow(
+                        ["tri:" + str(x), "spike+:" + str(appearances_count[0]), "spike-:" + str(appearances_count[1])
+                         ])
+
+        elif spike_value == -1:
+            appearances_count = spike_dic.get(x)
+            if appearances_count[1] > 0:
+                with open("spike_-.txt", 'a+', newline='') as new_file:
+                    csv_writer = csv.writer(new_file)
+                    csv_writer.writerow(
+                        ["tri:" + str(x), "spike+:" + str(appearances_count[0]), "spike-:" + str(appearances_count[1])
+                         ])
+        else:
+            appearances_count = spike_dic.get(x)
+            with open("spike_neutral.txt", 'a+', newline='') as new_file:
+                csv_writer = csv.writer(new_file)
+                csv_writer.writerow(
+                    ["tri:" + str(x), "spike+:" + str(appearances_count[0]), "spike-:" + str(appearances_count[1])
+                     ])
+    with open("all_spikes.txt", 'a+', newline='') as new_file:
+        csv_writer = csv.writer(new_file)
+        for row in spike_dic.keys():
+            csv_writer.writerow(
+                ["tri:" + row,
+                 "spike+:" + str(spike_dic.get(row)[0]),
+                 "spike-:" + str(spike_dic.get(row)[1]),
+                 "spike_N:" + str(spike_dic.get(row)[2])
+                 ])
+
     data["Y"] = tmplst
     font1 = {'family': 'serif', 'color': 'blue', 'size': 20}
     font2 = {'family': 'serif', 'color': 'darkred', 'size': 15}
-    plt.title("number of spike plus =" + str(spike_plus_sum) + " number of spike minus =" + str(spike_minus_sum), fontdict=font1)
-    plt.scatter(x="X", y="Y", data=data)
+    plt.title("number of spike plus =" + str(spike_plus_sum) + " number of spike minus =" + str(spike_minus_sum),
+              fontdict=font1)
+    plt.scatter(x="X", y="Y", marker='o', data=data)
     plt.xlabel("AA sub sequence 3 mers", fontdict=font2)
     plt.ylabel("'spike+'=1; 'spike-'=0", fontdict=font2)
     plt.savefig("_spike_fig.png")
-    plt.show()
+    # plt.show(block=False)
 
 
 def calculateHammingDistance(protein1, protein2):
@@ -885,9 +928,9 @@ def draw_graph3(networkx_graph, notebook=True, output_filename='empgraph.html', 
     #######################################
     extra_html += "Network density:" + str(nx.density(networkx_graph)) + "\n"
     extra_html += ""
-    # plt.plot(list(nuclotide_count_dict.keys()), [nuclotide_count_dict.get(x)[0] for x in nuclotide_count_dict.keys()])
-    # plt.savefig("tempfig.png")
-    # plt.show()
+    plt.plot(list(nuclotide_count_dict.keys()), [nuclotide_count_dict.get(x)[0] for x in nuclotide_count_dict.keys()])
+    plt.savefig(str(output_filename + "tempfig.png"))
+    # plt.show(block=False)
 
     extra_html += '''
             </div>
@@ -1055,7 +1098,6 @@ def create_amino_acid_netwrok():
         show_Nuclotides_netwrok_stats(AA_G, str(key) + '_NC_G_graph_output')
     plot_spikes(str(directory))
     os.chdir('..')
-
 
 
 def create_nuclotides_netwrok():
@@ -1553,5 +1595,3 @@ amino_acid_list = ['ATA', 'ATC', 'ATT', 'ATG',
 
 proteinNumber = 64
 countrow = 0
-
-
