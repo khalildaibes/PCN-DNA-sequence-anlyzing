@@ -1,32 +1,23 @@
-## Initialize PyIR and set example file for processing
-import gzip
-import json
-#
-# from crowelab_pyir import PyIR
-#
-# FILE = './covid_vaccine_newallSelect Start And End Position11225510000cdr3_fasta'+'.fasta'
-#
-# pyirfile = PyIR(query=FILE,)
-# result = pyirfile.run()
-#
-# # Prints the output file
-# print(result)
-#
-# # with gzip.open(str('covid_vaccine_newallSelect Start And End Position11225510000cdr3_fasta')+".json.gz", "r") as f:
-# #     data = f.read()
-# #     j = json.loads(data.decode('utf-8'))
-# #     print(type(j))
-## Initialize PyIR and set example file for processing
+# coding: utf-8
+
+# ipython notebook requires this
+# %matplotlib inline
+
+# python console requires this
+import matplotlib
+matplotlib.use('Agg')
 import pandas as pd
-from crowelab_pyir import PyIR
-from Bio import SeqIO
-FILE = './covid_vaccine_new3Select Start And End Position11215610000cdr3_fasta.fasta'
-
-pyirfiltered = PyIR(query=FILE, args=['--outfmt', 'dict'])
-result = pyirfiltered.run()
-df = pd.DataFrame.from_dict(result, orient = 'index')
-
-#Prints size of Python returned dictionary
-print(df)
-with open("api_results.csv", 'w', newline='') as new_file:
-    df.to_csv(path_or_buf=new_file)
+import matplotlib.pyplot as plt
+import venn
+q_val = ["01","001","1","005","05"]
+for q in q_val:
+    reg = [1000,2000,3000,4000,5000]
+    dfs_genes = []
+    for r in reg:
+        fname = "intersect/node_list_"+str(r)+"_"+q+".tsv"
+        df = pd.read_csv(fname,sep="\t")
+        df_genes = set(df.loc[df["Type"]=="gene","Label"])
+        dfs_genes.append(df_genes)
+    labels = venn.get_labels(dfs_genes, fill=['number', 'logic'])
+    fig, ax = venn.venn5(labels, names=reg)
+    fig.savefig('venn'+q+'.png', bbox_inches='tight')

@@ -14,7 +14,8 @@ from tqdm import tqdm
 import networkx as nx
 # A LIBRARY TO WORK WITH DATABASE AND CONNECT TO THE CONNECTION MODULE
 import db_connection as db_connection
-# A LIBRARY TO WORK VIEW PROGRESS IN CONSOLE WINDOW
+# A LIBRAR0Y2 |TO WORK VIEW PROGRESS IN CONSOLE WINDOW
+#
 import pickle
 # A LIBRARY TO WORK WITH THREADS AND PROCESS
 from threading import Thread
@@ -415,7 +416,7 @@ def startf(DB, ID, selected_analyzed_position, startposition, endposition, rows,
 
                     if triple == 3:
                         if tripleAA not in spike_dic.keys():
-                            spkie_count = [0, 0]
+                            spkie_count = [0, 0, 0]
                             spike_dic[tripleAA] = spkie_count
                         if "spike+" in str(spike):
                             x = spike_dic.get(tripleAA)
@@ -424,6 +425,10 @@ def startf(DB, ID, selected_analyzed_position, startposition, endposition, rows,
                         elif "spike-" in str(spike):
                             x = spike_dic.get(tripleAA)
                             x[1] += 1
+                            spike_dic[tripleAA] = x
+                        else:
+                            x = spike_dic.get(tripleAA)
+                            x[2] += 1
                             spike_dic[tripleAA] = x
 
                         if protein[dna[i:i + 3]] != "-" and protein[dna[i:i + 3]] != "*":
@@ -495,18 +500,54 @@ def plot_spikes(figure_directory):
     data["X"] = list(spike_dic.keys())
     tmplst = []
     for x in spike_dic.keys():
-        tmplst.append(get_spike_for_kmer(x))
+        spike_value = get_spike_for_kmer(x)
+        tmplst.append(spike_value)
         spike_plus_sum += get_spike_plus_sum(x)
         spike_minus_sum += get_spike_minus_sum(x)
+        if spike_value == 1:
+            appearances_count = spike_dic.get(x)
+            if appearances_count[0] > 0:
+                with open("spike+", 'a+', newline='') as new_file:
+                    csv_writer = csv.writer(new_file)
+                    csv_writer.writerow(
+                        ["tri:" + str(x), "spike+:" + str(appearances_count[0]), "spike-:" + str(appearances_count[1])
+                         ])
+
+        elif spike_value == -1:
+            appearances_count = spike_dic.get(x)
+            if appearances_count[1] > 0:
+                with open("spike_-.txt", 'a+', newline='') as new_file:
+                    csv_writer = csv.writer(new_file)
+                    csv_writer.writerow(
+                        ["tri:" + str(x), "spike+:" + str(appearances_count[0]), "spike-:" + str(appearances_count[1])
+                         ])
+        else:
+            appearances_count = spike_dic.get(x)
+            with open("spike_neutral.txt", 'a+', newline='') as new_file:
+                csv_writer = csv.writer(new_file)
+                csv_writer.writerow(
+                    ["tri:" + str(x), "spike+:" + str(appearances_count[0]), "spike-:" + str(appearances_count[1])
+                     ])
+    with open("all_spikes.txt", 'a+', newline='') as new_file:
+        csv_writer = csv.writer(new_file)
+        for row in spike_dic.keys():
+            csv_writer.writerow(
+                ["tri:" + row,
+                 "spike+:" + str(spike_dic.get(row)[0]),
+                 "spike-:" + str(spike_dic.get(row)[1]),
+                 "spike_N:" + str(spike_dic.get(row)[2])
+                 ])
+
     data["Y"] = tmplst
     font1 = {'family': 'serif', 'color': 'blue', 'size': 20}
     font2 = {'family': 'serif', 'color': 'darkred', 'size': 15}
-    plt.title("number of spike plus =" + str(spike_plus_sum) + " number of spike minus =" + str(spike_minus_sum), fontdict=font1)
-    plt.scatter(x="X", y="Y", data=data)
+    plt.title("number of spike plus =" + str(spike_plus_sum) + " number of spike minus =" + str(spike_minus_sum),
+              fontdict=font1)
+    plt.scatter(x="X", y="Y", marker='o', data=data)
     plt.xlabel("AA sub sequence 3 mers", fontdict=font2)
     plt.ylabel("'spike+'=1; 'spike-'=0", fontdict=font2)
     plt.savefig("_spike_fig.png")
-    plt.show()
+    # plt.show(block=False)
 
 
 def calculateHammingDistance(protein1, protein2):
@@ -667,8 +708,8 @@ def draw_graph3(networkx_graph, notebook=True, output_filename='empgraph.html', 
     extra_html += "Network density:" + str(nx.density(networkx_graph)) + "\n"
     extra_html += ""
     plt.plot(list(nuclotide_count_dict.keys()), [nuclotide_count_dict.get(x)[0] for x in nuclotide_count_dict.keys()])
-    plt.savefig("tempfig.png")
-    plt.show()
+    plt.savefig(str(output_filename + "tempfig.png"))
+    # plt.show(block=False)
 
     extra_html += '''
             </div>
@@ -838,7 +879,6 @@ def create_amino_acid_netwrok():
     os.chdir('..')
 
 
-
 def create_nuclotides_netwrok():
     print('start the nucoltides node positions')
     nucoltides_kmers_nets_G = {}
@@ -978,5 +1018,3 @@ amino_acid_list = ['ATA', 'ATC', 'ATT', 'ATG',
 
 proteinNumber = 64
 countrow = 0
-
-
